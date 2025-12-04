@@ -1,0 +1,432 @@
+// KTSP 预订系统数据库 Schema
+// 使用 Prisma ORM + MySQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ==================== 用户相关 ====================
+
+// 用户表
+model User {
+  id            String    @id @default(cuid())
+  phone         String?   @unique          // 手机号
+  email         String?   @unique          // 邮箱（第三方登录）
+  name          String?                    // 姓名
+  nickname      String?                    // 昵称
+  avatar        String?                    // 头像URL
+  password      String?                    // 密码（加密）
+  
+  // 会员信息
+  memberLevel   String    @default("普通会员")  // 会员等级
+  points        Int       @default(0)           // 积分余额
+  
+  // 实名认证
+  realName      String?                    // 真实姓名
+  idCard        String?                    // 身份证号
+  idCardFront   String?                    // 身份证正面照
+  idCardBack    String?                    // 身份证反面照
+  verifyStatus  String    @default("未认证")   // 认证状态：未认证/待审核/已认证/已拒绝
+  
+  // 邀请相关
+  inviteCode    String?   @unique          // 我的邀请码
+  invitedBy     String?                    // 邀请我的人ID
+  
+  // 状态
+  status        String    @default("active")   // active/disabled
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // 关联
+  accounts      Account[]
+  sessions      Session[]
+  bookings      Booking[]
+  checkins      Checkin[]
+  pointLogs     PointLog[]
+  messages      Message[]
+  feedbacks     Feedback[]
+  reviews       Review[]
+  
+  @@map("users")
+}
+
+// OAuth账号（Apple/Google登录）
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// 会话
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// 验证Token
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ==================== 场地相关 ====================
+
+// 场地/打位
+model Venue {
+  id          String   @id @default(cuid())
+  name        String                       // 场地名称
+  type        String                       // 类型：driving_range/simulator/course
+  description String?  @db.Text            // 描述
+  image       String?                      // 图片
+  capacity    Int      @default(1)         // 容量
+  status      String   @default("active")  // active/maintenance/disabled
+  sortOrder   Int      @default(0)         // 排序
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  timeSlots   TimeSlot[]
+  bookings    Booking[]
+  
+  @@map("venues")
+}
+
+// 时段模板
+model TimeSlot {
+  id        String   @id @default(cuid())
+  venueId   String
+  dayOfWeek Int                          // 0-6 周日到周六
+  startTime String                       // 开始时间 HH:mm
+  endTime   String                       // 结束时间 HH:mm
+  price     Decimal  @db.Decimal(10, 2)  // 价格
+  isHoliday Boolean  @default(false)     // 是否节假日价格
+  status    String   @default("active")
+  
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  
+  @@map("time_slots")
+}
+
+// ==================== 预约相关 ====================
+
+// 预约订单
+model Booking {
+  id            String   @id @default(cuid())
+  orderNo       String   @unique              // 订单号
+  userId        String
+  venueId       String?
+  coachId       String?
+  courseId      String?
+  
+  bookingType   String                        // venue/coach/course
+  bookingDate   DateTime                      // 预约日期
+  startTime     String                        // 开始时间
+  endTime       String                        // 结束时间
+  
+  // 价格
+  originalPrice Decimal  @db.Decimal(10, 2)   // 原价
+  discountPrice Decimal? @db.Decimal(10, 2)   // 折扣价
+  finalPrice    Decimal  @db.Decimal(10, 2)   // 最终价格
+  couponCode    String?                       // 使用的优惠码
+  
+  // 多人预约
+  playerCount   Int      @default(1)          // 人数
+  players       Json?                         // 同行人信息
+  
+  // 状态
+  status        String   @default("pending")  // pending/confirmed/completed/cancelled/no_show
+  cancelReason  String?
+  
+  // 乐观锁
+  version       Int      @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id])
+  venue         Venue?   @relation(fields: [venueId], references: [id])
+  coach         Coach?   @relation(fields: [coachId], references: [id])
+  course        Course?  @relation(fields: [courseId], references: [id])
+  reviews       Review[]
+  
+  @@index([userId])
+  @@index([venueId])
+  @@index([bookingDate])
+  @@index([status])
+  @@map("bookings")
+}
+
+// ==================== 教练相关 ====================
+
+// 教练
+model Coach {
+  id          String   @id @default(cuid())
+  name        String
+  avatar      String?
+  title       String?                      // 头衔
+  description String?  @db.Text
+  specialty   String?                      // 擅长领域
+  price       Decimal  @db.Decimal(10, 2)  // 课时费
+  rating      Decimal  @default(5.0) @db.Decimal(2, 1)  // 评分
+  reviewCount Int      @default(0)         // 评价数
+  status      String   @default("active")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  schedules   CoachSchedule[]
+  bookings    Booking[]
+  
+  @@map("coaches")
+}
+
+// 教练排班
+model CoachSchedule {
+  id        String   @id @default(cuid())
+  coachId   String
+  date      DateTime                      // 日期
+  startTime String                        // 开始时间
+  endTime   String                        // 结束时间
+  isBooked  Boolean  @default(false)      // 是否已被预约
+  
+  coach     Coach    @relation(fields: [coachId], references: [id])
+  
+  @@index([coachId, date])
+  @@map("coach_schedules")
+}
+
+// ==================== 团体课程 ====================
+
+// 团体课程
+model Course {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  image       String?
+  coachName   String?                      // 授课教练
+  maxStudents Int                          // 最大人数
+  enrolled    Int      @default(0)         // 已报名人数
+  price       Decimal  @db.Decimal(10, 2)
+  startDate   DateTime
+  endDate     DateTime
+  schedule    String?                      // 上课时间描述
+  status      String   @default("active")  // active/full/ended
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  bookings    Booking[]
+  
+  @@map("courses")
+}
+
+// ==================== 积分相关 ====================
+
+// 签到记录
+model Checkin {
+  id           String   @id @default(cuid())
+  userId       String
+  checkinDate  DateTime                    // 签到日期
+  points       Int                         // 获得积分
+  streakDays   Int      @default(1)        // 连续签到天数
+  createdAt    DateTime @default(now())
+  
+  user         User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, checkinDate])
+  @@map("checkins")
+}
+
+// 积分流水
+model PointLog {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String                        // checkin/booking/redeem/invite/admin
+  points    Int                           // 正数增加，负数减少
+  balance   Int                           // 变动后余额
+  remark    String?
+  relatedId String?                       // 关联ID（订单ID等）
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@map("point_logs")
+}
+
+// ==================== 积分商城 ====================
+
+// 积分商品
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  image       String?
+  points      Int                          // 所需积分
+  stock       Int      @default(0)         // 库存
+  type        String   @default("physical") // physical/virtual
+  status      String   @default("active")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  orders      ProductOrder[]
+  
+  @@map("products")
+}
+
+// 积分兑换订单
+model ProductOrder {
+  id          String   @id @default(cuid())
+  orderNo     String   @unique
+  userId      String
+  productId   String
+  productName String                       // 冗余商品名
+  points      Int                          // 消耗积分
+  quantity    Int      @default(1)
+  status      String   @default("pending") // pending/confirmed/shipped/completed
+  address     String?  @db.Text            // 收货地址JSON
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  product     Product  @relation(fields: [productId], references: [id])
+  
+  @@map("product_orders")
+}
+
+// ==================== 优惠码 ====================
+
+model Coupon {
+  id          String    @id @default(cuid())
+  code        String    @unique            // 优惠码
+  type        String                       // fixed/percent 固定金额/折扣
+  value       Decimal   @db.Decimal(10, 2) // 金额或折扣率
+  minAmount   Decimal?  @db.Decimal(10, 2) // 最低消费
+  maxDiscount Decimal?  @db.Decimal(10, 2) // 最大优惠金额
+  usageLimit  Int?                         // 使用次数限制
+  usedCount   Int       @default(0)        // 已使用次数
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+  
+  @@map("coupons")
+}
+
+// ==================== 消息 ====================
+
+model Message {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  content   String   @db.Text
+  type      String   @default("system")   // system/booking/points/promo
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@map("messages")
+}
+
+// ==================== 评价 ====================
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  bookingId String
+  rating    Int                           // 1-5星
+  content   String?  @db.Text
+  images    Json?                         // 图片数组
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id])
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  
+  @@map("reviews")
+}
+
+// ==================== 反馈 ====================
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String                        // suggestion/complaint/bug
+  content   String   @db.Text
+  images    Json?
+  status    String   @default("pending")  // pending/processing/resolved
+  reply     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id])
+  
+  @@map("feedbacks")
+}
+
+// ==================== 管理员 ====================
+
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      String   @default("staff")    // admin/staff
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("admins")
+}
+
+// ==================== 系统配置 ====================
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  remark    String?
+  updatedAt DateTime @updatedAt
+  
+  @@map("settings")
+}
+
+// 轮播图
+model Banner {
+  id        String   @id @default(cuid())
+  title     String?
+  image     String
+  link      String?
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  
+  @@map("banners")
+}

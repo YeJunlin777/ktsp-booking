@@ -1,36 +1,136 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KTSP 高尔夫预订系统
 
-## Getting Started
+KTSP高尔夫球场预订系统，支持场地预约、教练预约、积分商城等功能。
 
-First, run the development server:
+## 技术栈
+
+- **框架**: Next.js 16 (App Router)
+- **语言**: TypeScript
+- **UI**: TailwindCSS + shadcn/ui
+- **数据库**: MySQL + Prisma ORM
+- **认证**: NextAuth.js
+- **部署**: Vercel
+
+## 快速开始
+
+### 1. 安装依赖
+
+```bash
+npm install
+```
+
+### 2. 配置环境变量
+
+复制 `.env` 文件并配置：
+
+```env
+DATABASE_URL="mysql://root:password@localhost:3306/ktsp_booking"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-secret-key"
+```
+
+### 3. 初始化数据库
+
+```bash
+# 创建数据库表
+npx prisma migrate dev
+
+# 生成 Prisma 客户端
+npx prisma generate
+```
+
+### 4. 启动开发服务器
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+访问 [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 项目结构
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/                    # 页面路由
+│   ├── (main)/            # 用户端页面
+│   ├── (admin)/           # 管理后台页面
+│   └── api/               # API 接口
+├── components/
+│   ├── ui/                # shadcn/ui 组件
+│   └── ...                # 业务组件
+├── lib/
+│   ├── db.ts              # 数据库连接
+│   ├── auth.ts            # 认证配置
+│   ├── api.ts             # 前端 API 封装
+│   ├── response.ts        # API 响应格式
+│   ├── session.ts         # Session 工具
+│   └── utils/             # 工具函数
+├── types/
+│   ├── api.ts             # API 类型定义
+│   └── next-auth.d.ts     # NextAuth 类型扩展
+└── hooks/                 # 自定义 Hooks
+```
 
-## Learn More
+## 数据库表
 
-To learn more about Next.js, take a look at the following resources:
+| 模块 | 表名 | 说明 |
+|------|------|------|
+| 用户 | users, accounts, sessions | 用户、OAuth、会话 |
+| 场地 | venues, time_slots | 场地、时段价格 |
+| 预约 | bookings | 预约订单 |
+| 教练 | coaches, coach_schedules | 教练、排班 |
+| 课程 | courses | 团体课程 |
+| 积分 | checkins, point_logs, products, product_orders | 签到、积分、商城 |
+| 营销 | coupons | 优惠码 |
+| 系统 | admins, settings, banners, messages | 管理员、配置、消息 |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 常用命令
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# 开发
+npm run dev
 
-## Deploy on Vercel
+# 构建
+npm run build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# 生产启动
+npm start
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# 数据库迁移
+npx prisma migrate dev
+
+# 查看数据库
+npx prisma studio
+
+# 类型检查
+npm run lint
+```
+
+## API 响应格式
+
+```typescript
+// 成功
+{
+  "success": true,
+  "data": { ... },
+  "meta": { "page": 1, "pageSize": 10, "total": 100 }
+}
+
+// 失败
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "请先登录"
+  }
+}
+```
+
+## 开发人员
+
+- A同学（后端）: 数据库 + API
+- B同学（前端）: 页面 + 交互
+
+## License
+
+Private
