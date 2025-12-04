@@ -3,38 +3,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useBottomNav } from "@/hooks/use-config";
 import {
   Home,
   CalendarDays,
   Gift,
   User,
+  LucideIcon,
 } from "lucide-react";
 
-const navItems = [
-  {
-    href: "/",
-    label: "首页",
-    icon: Home,
-  },
-  {
-    href: "/booking",
-    label: "预约",
-    icon: CalendarDays,
-  },
-  {
-    href: "/points",
-    label: "积分",
-    icon: Gift,
-  },
-  {
-    href: "/profile",
-    label: "我的",
-    icon: User,
-  },
-];
+// 图标映射表（从配置的字符串映射到实际图标）
+const iconMap: Record<string, LucideIcon> = {
+  Home,
+  CalendarDays,
+  Gift,
+  User,
+};
 
 export function BottomNav() {
   const pathname = usePathname();
+  const navItems = useBottomNav(); // 从配置读取
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background">
@@ -44,6 +32,8 @@ export function BottomNav() {
             item.href === "/"
               ? pathname === "/"
               : pathname.startsWith(item.href);
+          
+          const Icon = iconMap[item.icon] || Home;
 
           return (
             <Link
@@ -56,7 +46,7 @@ export function BottomNav() {
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <item.icon className="h-5 w-5" />
+              <Icon className="h-5 w-5" />
               <span>{item.label}</span>
             </Link>
           );
