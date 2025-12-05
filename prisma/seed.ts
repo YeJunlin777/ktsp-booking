@@ -41,6 +41,22 @@ async function main() {
   });
   console.log("✅ 管理员:", admin.username);
 
+  // ========== 1.5 创建测试用户 ==========
+  const testUser = await prisma.user.upsert({
+    where: { phone: "13800138000" },
+    update: {},
+    create: {
+      phone: "13800138000",
+      name: "测试用户",
+      nickname: "高尔夫爱好者",
+      memberLevel: "银卡会员",
+      points: 1000,
+      inviteCode: "TEST2024",
+      status: "active",
+    },
+  });
+  console.log("✅ 测试用户:", testUser.phone);
+
   // ========== 2. 创建场地 ==========
   const venues = await Promise.all([
     prisma.venue.upsert({

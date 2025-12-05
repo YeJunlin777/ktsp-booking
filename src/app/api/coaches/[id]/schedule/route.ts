@@ -8,21 +8,7 @@ interface RouteParams {
 }
 
 /**
- * 生成时段列表
- */
-function generateTimeSlots(startHour: number, endHour: number, _duration: number) {
-  const slots: string[] = [];
-  
-  for (let hour = startHour; hour < endHour; hour++) {
-    const timeStr = `${String(hour).padStart(2, "0")}:00`;
-    slots.push(timeStr);
-  }
-
-  return slots;
-}
-
-/**
- * 教练排班 API
+ * 教练排班 API（用户端）
  * 
  * GET /api/coaches/[id]/schedule
  * Query: date - 查询日期 (YYYY-MM-DD)
@@ -58,57 +44,35 @@ export async function GET(
       return success([]);
     }
 
-    // 查询教练当天的排班
+    // 查询教练当天的所有排班
     const queryDate = new Date(date);
-    const schedule = await prisma.coachSchedule.findFirst({
+    const schedules = await prisma.coachSchedule.findMany({
       where: {
         coachId: id,
         date: queryDate,
-        isBooked: false,
       },
+      orderBy: { startTime: "asc" },
       select: {
+        id: true,
         startTime: true,
         endTime: true,
+        isBooked: true,
       },
     });
 
-    // 如果没有排班或已被整体预约，返回空数组
-    if (!schedule) {
+    // 如果没有排班，返回空数组
+    if (schedules.length === 0) {
       return success([]);
     }
 
-    // 生成可用时段
-    const startHour = parseInt(schedule.startTime.split(":")[0], 10);
-    const endHour = parseInt(schedule.endTime.split(":")[0], 10);
-    const allSlots = generateTimeSlots(startHour, endHour, coachConfig.lessonDuration.default);
-
-    // 查询当天已预约的时段
-    const nextDate = new Date(date);
-    nextDate.setDate(nextDate.getDate() + 1);
-
-    const bookedRecords = await prisma.booking.findMany({
-      where: {
-        coachId: id,
-        bookingDate: {
-          gte: queryDate,
-          lt: nextDate,
-        },
-        status: {
-          in: ["pending", "confirmed"],
-        },
-      },
-      select: {
-        startTime: true,
-      },
-    });
-
-    const bookedTimes = new Set(bookedRecords.map((b) => b.startTime));
     const price = Number(coach.price);
 
-    // 构建返回数据
-    const slots = allSlots.map((time) => ({
-      time,
-      available: !bookedTimes.has(time),
+    // 构建返回数据：每个排班时段作为一个可选项
+    const slots = schedules.map((schedule: typeof schedules[number]) => ({
+      id: schedule.id,
+      time: schedule.startTime,
+      endTime: schedule.endTime,
+      available: !schedule.isBooked,
       duration: coachConfig.lessonDuration.default,
       price,
     }));
