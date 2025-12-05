@@ -7,6 +7,7 @@
 import "dotenv/config";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 // 解析 DATABASE_URL
 const databaseUrl = new URL(process.env.DATABASE_URL || "mysql://root:@localhost:3306/ktsp_booking");
@@ -26,12 +27,13 @@ async function main() {
   console.log("🌱 开始播种数据库...");
 
   // ========== 1. 创建管理员 ==========
+  const adminPassword = bcrypt.hashSync("123456", 10);
   const admin = await prisma.admin.upsert({
     where: { username: "admin" },
-    update: {},
+    update: { password: adminPassword }, // 更新密码以确保正确
     create: {
       username: "admin",
-      password: "$2a$10$K7L1OJ45/4Y2nIvhRVpCe.FSmhDdWoXehVzJptJ/op0lSsvqNu/1u", // 123456
+      password: adminPassword,
       name: "超级管理员",
       role: "super_admin",
       status: "active",

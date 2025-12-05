@@ -56,8 +56,8 @@ export function error(
 // 常用错误
 export const Errors = {
   // 认证相关
-  UNAUTHORIZED: () => error("UNAUTHORIZED", "请先登录", 401),
-  FORBIDDEN: () => error("FORBIDDEN", "无权限访问", 403),
+  UNAUTHORIZED: (msg = "请先登录") => error("UNAUTHORIZED", msg, 401),
+  FORBIDDEN: (msg = "无权限访问") => error("FORBIDDEN", msg, 403),
   TOKEN_EXPIRED: () => error("TOKEN_EXPIRED", "登录已过期，请重新登录", 401),
   
   // 参数相关

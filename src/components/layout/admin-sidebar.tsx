@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -16,7 +16,6 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
-import { signOut } from "next-auth/react";
 
 const menuItems = [
   { href: "/admin", label: "控制台", icon: LayoutDashboard },
@@ -33,6 +32,13 @@ const menuItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await fetch("/api/admin/auth/logout", { method: "POST" });
+    router.push("/admin/login");
+    router.refresh();
+  };
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r bg-background">
@@ -75,7 +81,7 @@ export function AdminSidebar() {
       {/* 底部退出按钮 */}
       <div className="absolute bottom-0 left-0 right-0 border-t p-4">
         <button
-          onClick={() => signOut({ callbackUrl: "/admin/login" })}
+          onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />

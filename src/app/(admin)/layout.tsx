@@ -1,10 +1,20 @@
+import { headers } from "next/headers";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // 获取当前路径（由 middleware 设置）
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") || "";
+  
+  // 登录页使用简单布局（无侧边栏）
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
+
   return (
     <div className="min-h-screen bg-muted/30">
       {/* 侧边栏 */}
