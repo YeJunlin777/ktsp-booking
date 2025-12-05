@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-// 🔧 开发模式：跳过登录验证（上线前改为 false）
+// 🔧 开发模式：跳过用户端登录验证（上线前改为 false）
 const DEV_SKIP_AUTH = true;
 
-// 需要登录才能访问的路径
+// 需要登录才能访问的路径（用户端）
 const protectedPaths = [
   "/profile",
   "/bookings",
@@ -14,31 +14,74 @@ const protectedPaths = [
   "/messages",
 ];
 
-// 管理后台路径
-const adminPaths = ["/admin"];
-
 // 登录后不能访问的路径（如登录页）
 const authPaths = ["/login", "/register"];
 
 export async function middleware(request: NextRequest) {
-  // 开发模式跳过所有验证
-  if (DEV_SKIP_AUTH) {
-    return NextResponse.next();
-  }
-
   const { pathname } = request.nextUrl;
   
-  // 获取token
+  // 添加 pathname 到 headers（供 layout 使用）
+  const response = NextResponse.next();
+  response.headers.set("x-pathname", pathname);
+
+  // ====== 管理后台验证 ======
+  const isAdminPath = pathname.startsWith("/admin");
+  const isAdminLoginPage = pathname === "/admin/login";
+  
+  if (isAdminPath && !isAdminLoginPage) {
+    const adminToken = request.cookies.get("admin_token")?.value;
+    
+    if (!adminToken) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    
+    // 验证 token 是否有效
+    try {
+      const payload = JSON.parse(Buffer.from(adminToken, "base64").toString());
+      if (payload.exp < Date.now()) {
+        // token 过期
+        const res = NextResponse.redirect(new URL("/admin/login", request.url));
+        res.cookies.delete("admin_token");
+        return res;
+      }
+    } catch {
+      // token 无效
+      const res = NextResponse.redirect(new URL("/admin/login", request.url));
+      res.cookies.delete("admin_token");
+      return res;
+    }
+  }
+
+  // 管理后台已登录访问登录页 -> 跳转控制台
+  if (isAdminLoginPage) {
+    const adminToken = request.cookies.get("admin_token")?.value;
+    if (adminToken) {
+      try {
+        const payload = JSON.parse(Buffer.from(adminToken, "base64").toString());
+        if (payload.exp > Date.now()) {
+          return NextResponse.redirect(new URL("/admin", request.url));
+        }
+      } catch {
+        // token 无效，继续显示登录页
+      }
+    }
+  }
+
+  // ====== 用户端验证 ======
+  // 开发模式跳过用户端验证
+  if (DEV_SKIP_AUTH) {
+    return response;
+  }
+
+  // 获取用户端 token
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
   });
 
-  // 检查是否是受保护的路径
   const isProtectedPath = protectedPaths.some((path) =>
     pathname.startsWith(path)
   );
-  const isAdminPath = adminPaths.some((path) => pathname.startsWith(path));
   const isAuthPath = authPaths.some((path) => pathname.startsWith(path));
 
   // 未登录访问受保护页面 -> 跳转登录
@@ -48,17 +91,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 未登录访问管理后台 -> 跳转后台登录
-  if (isAdminPath && !token) {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
-  }
-
   // 已登录访问登录页 -> 跳转首页
   if (isAuthPath && token) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
