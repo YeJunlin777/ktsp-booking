@@ -15,15 +15,23 @@ export const venueConfig = {
     pageTitle: "场地预约",
     listTitle: "选择场地",
     emptyText: "暂无可预约场地",
-    selectDateText: "选择日期",
-    selectTimeText: "选择时段",
+    selectDateText: "📅 想哪天来？",
+    selectDurationText: "⏱️ 想打多久？",
+    selectTimeText: "🕐 选择时间段",
     confirmText: "确认预约",
     successText: "预约成功",
     
     // 状态文字
-    statusAvailable: "可预约",
-    statusBooked: "已约满",
+    statusAvailable: "可选",
+    statusBooked: "已满",
     statusMaintenance: "维护中",
+    statusConflict: "冲突",
+    
+    // 提示文字
+    recommendTip: "推荐",
+    saveTip: "省",
+    conflictTip: "与已有预约冲突",
+    selectTimeTip: "请选择时间段",
   },
   
   // ==================== 场地类型配置 ====================
@@ -80,18 +88,53 @@ export const venueConfig = {
     // 营业时间
     openTime: "06:00",
     closeTime: "22:00",
-    // 每个时段时长（分钟）
-    slotDuration: 60,
-    // 时段间隔（分钟）
-    slotGap: 0,
+    // 最小时段粒度（分钟）- 用于冲突检测
+    minSlotUnit: 15,
   },
+  
+  // ==================== 时长选项 ====================
+  // 用户可选的预约时长（支持15/30/60分钟）
+  durationOptions: [
+    { 
+      minutes: 15, 
+      label: "15分钟", 
+      shortLabel: "15分钟",
+      priceRatio: 0.25,  // 相对于1小时的价格比例
+      discount: 0,
+    },
+    { 
+      minutes: 30, 
+      label: "30分钟", 
+      shortLabel: "30分钟",
+      priceRatio: 0.5,
+      discount: 0,
+    },
+    { 
+      minutes: 60, 
+      label: "60分钟", 
+      shortLabel: "60分钟",
+      priceRatio: 1,
+      discount: 0,
+      recommended: true,  // 推荐选项
+    },
+  ],
   
   // ==================== 价格展示 ====================
   priceDisplay: {
-    unit: "元/小时",
-    showOriginalPrice: true,  // 是否显示原价
-    showMemberPrice: true,    // 是否显示会员价
+    unit: "元",
+    hourUnit: "元/小时",
+    showOriginalPrice: true,
+    showMemberPrice: true,
+    showDiscount: true,
   },
+  
+  // ==================== 预约须知 ====================
+  bookingTips: [
+    "请提前10分钟到场签到",
+    "开始前2小时可免费取消",
+    "迟到15分钟视为自动放弃",
+    "请穿着合适的运动服装",
+  ],
 };
 
 export type VenueConfig = typeof venueConfig;

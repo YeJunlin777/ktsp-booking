@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { success, Errors } from "@/lib/response";
+import { BookingService } from "@/lib/booking-service";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -96,34 +97,15 @@ export async function GET(
       venue.minDuration
     );
 
-    // 查询当天已预约的记录
-    const bookingDate = new Date(date);
-    const nextDate = new Date(date);
-    nextDate.setDate(nextDate.getDate() + 1);
-
-    const bookedRecords = await prisma.booking.findMany({
-      where: {
-        venueId: id,
-        bookingDate: {
-          gte: bookingDate,
-          lt: nextDate,
-        },
-        status: {
-          in: ["pending", "confirmed"],
-        },
-      },
-      select: {
-        startTime: true,
-        endTime: true,
-      },
-    });
+    // 使用服务层获取已预约时段（统一逻辑）
+    const bookedSlots = await BookingService.getBookedSlots("venue", id, date);
 
     // 收集已预约的时段
     const bookedTimes = new Set<string>();
-    bookedRecords.forEach((booking) => {
-      // 简单处理：将开始时间标记为已预约
-      bookedTimes.add(booking.startTime);
+    bookedSlots.forEach((slot) => {
+      bookedTimes.add(slot.startTime);
     });
+    
     const basePrice = Number(venue.price);
     const peakPrice = venue.peakPrice ? Number(venue.peakPrice) : basePrice;
 
@@ -134,7 +116,12 @@ export async function GET(
       price: isPeakTime(time, date) ? peakPrice : basePrice,
     }));
 
-    return success(slots);
+    return success({
+      slots,
+      bookedSlots,  // 新增：返回已占用时段详情
+      basePrice,
+      peakPrice,
+    });
   } catch (error) {
     console.error("获取时段失败:", error);
     return Errors.INTERNAL_ERROR();

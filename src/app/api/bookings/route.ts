@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { success, Errors } from "@/lib/response";
 import { getCurrentUserId } from "@/lib/session";
 import { bookingConfig } from "@/config";
+import { BookingService } from "@/lib/booking-service";
 
 // 🔧 开发模式：跳过登录验证（上线前改为 false）
 const DEV_SKIP_AUTH = true;
@@ -82,6 +83,8 @@ export async function GET(request: NextRequest) {
  * 创建预约 API
  * 
  * POST /api/bookings
+ * 
+ * 【并发控制】通过 BookingService 处理所有并发场景
  */
 export async function POST(request: NextRequest) {
   try {
@@ -97,10 +100,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { type, venueId, coachId, date, slots, totalPrice } = body;
+    const { type, venueId, coachId, date, startTime, duration, totalPrice, requestId } = body;
 
-    // 验证参数
-    if (!type || !date || !slots || slots.length === 0) {
+    // 基本参数校验
+    if (!type || !date || !startTime || !duration) {
       return Errors.INVALID_PARAMS("预约信息不完整");
     }
 
@@ -112,49 +115,33 @@ export async function POST(request: NextRequest) {
       return Errors.INVALID_PARAMS("请选择教练");
     }
 
-    // 检查用户当前有效预约数量
-    const activeCount = await prisma.booking.count({
-      where: {
-        userId,
-        status: { in: ["pending", "confirmed"] },
-      },
+    // 调用服务层创建预约（处理所有并发和校验逻辑）
+    const result = await BookingService.createBooking({
+      userId,
+      type,
+      venueId,
+      coachId,
+      date,
+      startTime,
+      duration: Number(duration),
+      totalPrice: Number(totalPrice),
+      requestId, // 用于幂等性检测
     });
 
-    if (activeCount >= bookingConfig.rules.maxActiveBookings) {
-      return Errors.INVALID_PARAMS(`最多同时预约${bookingConfig.rules.maxActiveBookings}个`);
+    if (!result.success) {
+      // 返回业务错误，带冲突详情
+      return Errors.INVALID_PARAMS(result.error?.message || "预约失败", {
+        code: result.error?.code,
+        conflicts: result.error?.conflicts,
+      });
     }
 
-    // 计算时间
-    const startTime = slots[0];
-    const lastSlot = slots[slots.length - 1];
-    const endHour = parseInt(lastSlot.split(":")[0], 10) + 1;
-    const endTime = `${String(endHour).padStart(2, "0")}:00`;
-
-    // 生成订单号
-    const orderNo = `BK${Date.now()}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-    // 创建预约
-    const booking = await prisma.booking.create({
-      data: {
-        orderNo,
-        userId,
-        bookingType: type,
-        venueId: venueId || null,
-        coachId: coachId || null,
-        bookingDate: new Date(date),
-        startTime,
-        endTime,
-        originalPrice: totalPrice,
-        finalPrice: totalPrice,
-        playerCount: 1,
-        status: "pending",
-      },
-    });
-
     return success({
-      id: booking.id,
+      id: result.data?.id,
+      orderNo: result.data?.orderNo,
       message: bookingConfig.texts.confirmSuccess,
     });
+    
   } catch (error) {
     console.error("创建预约失败:", error);
     return Errors.INTERNAL_ERROR();

@@ -42,12 +42,13 @@ export function successWithPagination<T>(
 export function error(
   code: string,
   message: string,
-  status: number = 400
+  status: number = 400,
+  details?: Record<string, unknown>
 ): NextResponse<ApiResponse<null>> {
   return NextResponse.json(
     {
       success: false,
-      error: { code, message },
+      error: { code, message, ...details },
     },
     { status }
   );
@@ -61,7 +62,8 @@ export const Errors = {
   TOKEN_EXPIRED: () => error("TOKEN_EXPIRED", "登录已过期，请重新登录", 401),
   
   // 参数相关
-  INVALID_PARAMS: (msg = "参数错误") => error("INVALID_PARAMS", msg, 400),
+  INVALID_PARAMS: (msg = "参数错误", details?: Record<string, unknown>) => 
+    error("INVALID_PARAMS", msg, 400, details),
   MISSING_PARAMS: (field: string) => error("MISSING_PARAMS", `缺少必填参数: ${field}`, 400),
   
   // 资源相关
