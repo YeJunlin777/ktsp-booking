@@ -68,7 +68,7 @@ export const memberConfig = {
     { key: "orders", label: "兑换记录", icon: "ShoppingBag", href: "/orders" },
     { key: "coupons", label: "我的优惠券", icon: "Ticket", href: "/coupons" },
     { key: "messages", label: "消息中心", icon: "Bell", href: "/messages" },
-    { key: "invite", label: "邀请好友", icon: "UserPlus", href: "/invite" },
+    { key: "invite", label: "推荐有礼", icon: "UserPlus", href: "/referral" },
     { key: "feedback", label: "意见反馈", icon: "MessageSquare", href: "/feedback" },
     { key: "settings", label: "设置", icon: "Settings", href: "/settings" },
   ],

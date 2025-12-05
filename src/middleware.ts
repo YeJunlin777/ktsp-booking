@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+// 🔧 开发模式：跳过登录验证（上线前改为 false）
+const DEV_SKIP_AUTH = true;
+
 // 需要登录才能访问的路径
 const protectedPaths = [
   "/profile",
@@ -18,6 +21,11 @@ const adminPaths = ["/admin"];
 const authPaths = ["/login", "/register"];
 
 export async function middleware(request: NextRequest) {
+  // 开发模式跳过所有验证
+  if (DEV_SKIP_AUTH) {
+    return NextResponse.next();
+  }
+
   const { pathname } = request.nextUrl;
   
   // 获取token

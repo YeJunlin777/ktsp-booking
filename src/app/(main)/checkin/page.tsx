@@ -14,6 +14,9 @@ import {
   EarnRulesCard,
 } from "@/components/checkin";
 
+// 🔧 开发模式：跳过登录验证（上线前改为 false）
+const DEV_SKIP_AUTH = true;
+
 /**
  * 签到页面
  * 
@@ -27,15 +30,15 @@ export default function CheckinPage() {
   const config = usePointsConfig();
   const { loading, checking, status: checkinStatus, doCheckin } = useCheckin();
 
-  // 未登录跳转
+  // 未登录跳转（开发模式跳过）
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!DEV_SKIP_AUTH && status === "unauthenticated") {
       router.push("/login?callbackUrl=/checkin");
     }
   }, [status, router]);
 
-  // 加载中
-  if (loading || status === "loading") {
+  // 加载中（开发模式跳过session检查）
+  if (loading || (!DEV_SKIP_AUTH && status === "loading")) {
     return (
       <div className="p-4 space-y-4">
         <Skeleton className="h-40 w-full" />
@@ -49,7 +52,7 @@ export default function CheckinPage() {
   const checkedDates = checkinStatus?.monthCheckins.map((c) => c.date) || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/10 to-background p-4 space-y-4">
+    <div className="min-h-screen bg-gradient-to-b from-primary/10 to-background p-4 pb-24 space-y-4">
       {/* 积分统计 + 签到按钮 */}
       <PointsHeader
         totalPoints={checkinStatus?.totalPoints || 0}

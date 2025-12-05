@@ -102,10 +102,22 @@ model VerificationToken {
 model Venue {
   id          String   @id @default(cuid())
   name        String                       // 场地名称
-  type        String                       // 类型：driving_range/simulator/course
+  type        String                       // 类型：driving_range/simulator/putting_green/vip_room
   description String?  @db.Text            // 描述
-  image       String?                      // 图片
+  images      Json?                        // 图片数组 JSON
   capacity    Int      @default(1)         // 容量
+  
+  // 价格
+  price       Decimal  @db.Decimal(10, 2)  // 基础价格
+  peakPrice   Decimal? @db.Decimal(10, 2)  // 高峰价格
+  
+  // 设施和营业时间
+  facilities  Json?                        // 设施 JSON数组
+  openTime    String   @default("08:00")   // 营业开始时间
+  closeTime   String   @default("22:00")   // 营业结束时间
+  minDuration Int      @default(30)        // 最小预约时长（分钟）
+  maxDuration Int      @default(240)       // 最大预约时长（分钟）
+  
   status      String   @default("active")  // active/maintenance/disabled
   sortOrder   Int      @default(0)         // 排序
   createdAt   DateTime @default(now())
@@ -113,6 +125,7 @@ model Venue {
   
   timeSlots   TimeSlot[]
   bookings    Booking[]
+  reviews     Review[]
   
   @@map("venues")
 }
@@ -186,22 +199,26 @@ model Booking {
 
 // 教练
 model Coach {
-  id          String   @id @default(cuid())
-  name        String
-  avatar      String?
-  title       String?                      // 头衔
-  description String?  @db.Text
-  specialty   String?                      // 擅长领域
-  price       Decimal  @db.Decimal(10, 2)  // 课时费
-  rating      Decimal  @default(5.0) @db.Decimal(2, 1)  // 评分
-  reviewCount Int      @default(0)         // 评价数
-  status      String   @default("active")
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  avatar         String?
+  title          String?                      // 头衔
+  introduction   String?  @db.Text            // 简介
+  specialty      Json?                        // 擅长领域 JSON数组
+  certifications Json?                        // 证书 JSON数组
+  experience     Int      @default(1)         // 教学经验（年）
+  price          Decimal  @db.Decimal(10, 2)  // 课时费
+  rating         Decimal  @default(5.0) @db.Decimal(2, 1)  // 评分
+  reviewCount    Int      @default(0)         // 评价数
+  lessonCount    Int      @default(0)         // 授课数
+  status         String   @default("active")
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   
   schedules   CoachSchedule[]
   bookings    Booking[]
+  reviews     Review[]
   
   @@map("coaches")
 }
@@ -225,20 +242,26 @@ model CoachSchedule {
 
 // 团体课程
 model Course {
-  id          String   @id @default(cuid())
-  name        String
-  description String?  @db.Text
-  image       String?
-  coachName   String?                      // 授课教练
-  maxStudents Int                          // 最大人数
-  enrolled    Int      @default(0)         // 已报名人数
-  price       Decimal  @db.Decimal(10, 2)
-  startDate   DateTime
-  endDate     DateTime
-  schedule    String?                      // 上课时间描述
-  status      String   @default("active")  // active/full/ended
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String    @id @default(cuid())
+  name           String
+  description    String?   @db.Text
+  image          String?
+  category       String?                      // 分类：short_game/long_game/youth/beginner
+  coachId        String?                      // 授课教练ID
+  coachName      String?                      // 授课教练名（冗余）
+  syllabus       Json?                        // 课程大纲 JSON
+  totalLessons   Int       @default(1)        // 总课时数
+  maxStudents    Int                          // 最大人数
+  enrolled       Int       @default(0)        // 已报名人数
+  price          Decimal   @db.Decimal(10, 2)
+  startDate      DateTime
+  endDate        DateTime
+  enrollDeadline DateTime?                    // 报名截止日期
+  schedule       String?                      // 上课时间描述
+  requirements   String?   @db.Text           // 报名要求
+  status         String    @default("active") // active/enrolling/full/ended
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   
   bookings    Booking[]
   
@@ -283,17 +306,21 @@ model PointLog {
 
 // 积分商品
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String?  @db.Text
-  image       String?
-  points      Int                          // 所需积分
-  stock       Int      @default(0)         // 库存
-  type        String   @default("physical") // physical/virtual
-  status      String   @default("active")
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  description     String?  @db.Text
+  images          Json?                        // 图片数组 JSON
+  points          Int                          // 所需积分
+  originalPoints  Int?                         // 原价积分（用于显示折扣）
+  stock           Int      @default(0)         // 库存
+  category        String   @default("goods")   // goods/virtual/coupon
+  deliveryMethod  String   @default("pickup")  // pickup/delivery
+  specifications  Json?                        // 规格参数 JSON
+  salesCount      Int      @default(0)         // 销量
+  status          String   @default("active")
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
   
   orders      ProductOrder[]
   
@@ -320,8 +347,52 @@ model ProductOrder {
   @@map("product_orders")
 }
 
-// ==================== 优惠码 ====================
+// ==================== 优惠券系统 ====================
 
+// 优惠券模板（管理员创建）
+model CouponTemplate {
+  id              String    @id @default(cuid())
+  name            String                       // 券名称
+  type            String                       // amount/discount 固定金额/折扣
+  value           Decimal   @db.Decimal(10, 2) // 金额或折扣率
+  minAmount       Decimal?  @db.Decimal(10, 2) // 最低消费
+  maxDiscount     Decimal?  @db.Decimal(10, 2) // 最大优惠金额（折扣券用）
+  applicableTypes Json?                        // 适用场地类型 JSON数组
+  totalQuantity   Int?                         // 发行总量（null=无限）
+  claimedCount    Int       @default(0)        // 已领取数量
+  perUserLimit    Int       @default(1)        // 每人限领数量
+  startDate       DateTime?                    // 生效开始日期
+  endDate         DateTime?                    // 生效结束日期
+  validDays       Int?                         // 领取后有效天数
+  isPublic        Boolean   @default(true)     // 是否公开领取
+  status          String    @default("active")
+  createdAt       DateTime  @default(now())
+  
+  userCoupons     UserCoupon[]
+  
+  @@map("coupon_templates")
+}
+
+// 用户优惠券（用户领取的）
+model UserCoupon {
+  id          String    @id @default(cuid())
+  userId      String
+  templateId  String
+  code        String    @unique              // 券码（唯一）
+  status      String    @default("available") // available/used/expired
+  usedAt      DateTime?                       // 使用时间
+  usedOrderId String?                         // 使用的订单ID
+  expireAt    DateTime                        // 过期时间
+  createdAt   DateTime  @default(now())
+  
+  template    CouponTemplate @relation(fields: [templateId], references: [id])
+  
+  @@index([userId])
+  @@index([status])
+  @@map("user_coupons")
+}
+
+// 旧优惠码（兼容直接输入优惠码场景）
 model Coupon {
   id          String    @id @default(cuid())
   code        String    @unique            // 优惠码
@@ -359,16 +430,22 @@ model Message {
 // ==================== 评价 ====================
 
 model Review {
-  id        String   @id @default(cuid())
-  userId    String
-  bookingId String
-  rating    Int                           // 1-5星
-  content   String?  @db.Text
-  images    Json?                         // 图片数组
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  userId       String
+  bookingId    String
+  venueId      String?                      // 评价的场地
+  coachId      String?                      // 评价的教练
+  venueRating  Int?                         // 场地评分 1-5
+  venueComment String?  @db.Text            // 场地评价
+  coachRating  Int?                         // 教练评分 1-5
+  coachComment String?  @db.Text            // 教练评价
+  images       Json?                        // 图片数组
+  createdAt    DateTime @default(now())
   
   user      User     @relation(fields: [userId], references: [id])
   booking   Booking  @relation(fields: [bookingId], references: [id])
+  venue     Venue?   @relation(fields: [venueId], references: [id])
+  coach     Coach?   @relation(fields: [coachId], references: [id])
   
   @@map("reviews")
 }
@@ -429,4 +506,94 @@ model Banner {
   createdAt DateTime @default(now())
   
   @@map("banners")
+}
+
+// 节假日设置
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @unique             // 节假日日期
+  name      String                       // 节日名称
+  type      String   @default("holiday") // holiday/workday（调休上班）
+  createdAt DateTime @default(now())
+  
+  @@map("holidays")
+}
+
+// ==================== 黑名单 ====================
+
+model Blacklist {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  reason    String?  @db.Text            // 拉黑原因
+  createdBy String?                      // 操作人ID
+  createdAt DateTime @default(now())
+  
+  @@map("blacklist")
+}
+
+// ==================== 预约邀请（多人联机） ====================
+
+model BookingInvitation {
+  id          String    @id @default(cuid())
+  bookingId   String                        // 预约ID
+  inviterId   String                        // 邀请人ID
+  inviteeId   String?                       // 被邀请人ID（已注册用户）
+  invitePhone String?                       // 被邀请人手机号（未注册）
+  status      String    @default("pending") // pending/accepted/rejected/expired
+  respondedAt DateTime?                     // 响应时间
+  createdAt   DateTime  @default(now())
+  
+  @@index([bookingId])
+  @@index([inviteeId])
+  @@map("booking_invitations")
+}
+
+// ==================== 推荐有礼 ====================
+
+model ReferralRecord {
+  id          String    @id @default(cuid())
+  inviterId   String                        // 邀请人ID
+  inviteeId   String                        // 被邀请人ID
+  status      String    @default("pending") // pending/completed（首次消费后完成）
+  inviterReward Int     @default(0)         // 邀请人获得积分
+  inviteeReward Int     @default(0)         // 被邀请人获得积分
+  completedAt DateTime?                     // 完成时间
+  createdAt   DateTime  @default(now())
+  
+  @@unique([inviterId, inviteeId])
+  @@index([inviterId])
+  @@map("referral_records")
+}
+
+// ==================== 积分任务 ====================
+
+model PointTask {
+  id          String   @id @default(cuid())
+  key         String   @unique             // 任务标识
+  name        String                       // 任务名称
+  description String?                      // 任务描述
+  points      Int                          // 奖励积分
+  type        String   @default("once")    // once/daily/unlimited
+  dailyLimit  Int?                         // 每日完成次数限制
+  icon        String?                      // 图标
+  sortOrder   Int      @default(0)
+  status      String   @default("active")
+  
+  completions PointTaskCompletion[]
+  
+  @@map("point_tasks")
+}
+
+// 用户任务完成记录
+model PointTaskCompletion {
+  id        String   @id @default(cuid())
+  userId    String
+  taskId    String
+  points    Int                           // 获得积分
+  createdAt DateTime @default(now())
+  
+  task      PointTask @relation(fields: [taskId], references: [id])
+  
+  @@index([userId, taskId])
+  @@map("point_task_completions")
 }

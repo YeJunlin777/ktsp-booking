@@ -19,15 +19,29 @@ export { appConfig } from "./app.config";
 export type { AppConfig } from "./app.config";
 
 // 子系统配置
+export { homeConfig } from "./modules/home.config";
 export { venueConfig } from "./modules/venue.config";
 export { coachConfig } from "./modules/coach.config";
+export { courseConfig } from "./modules/course.config";
+export { bookingConfig } from "./modules/booking.config";
 export { pointsConfig } from "./modules/points.config";
 export { memberConfig } from "./modules/member.config";
 export { adminConfig } from "./modules/admin.config";
+export { messageConfig } from "./modules/message.config";
+export { couponConfig } from "./modules/coupon.config";
+export { reviewConfig } from "./modules/review.config";
+export { referralConfig } from "./modules/referral.config";
 
 // 类型导出
+export type { HomeConfig, CategoryItem, QuickActionItem } from "./modules/home.config";
 export type { VenueConfig } from "./modules/venue.config";
 export type { CoachConfig } from "./modules/coach.config";
+export type { CourseConfig } from "./modules/course.config";
+export type { BookingConfig } from "./modules/booking.config";
 export type { PointsConfig } from "./modules/points.config";
 export type { MemberConfig } from "./modules/member.config";
 export type { AdminConfig } from "./modules/admin.config";
+export type { MessageConfig } from "./modules/message.config";
+export type { CouponConfig } from "./modules/coupon.config";
+export type { ReviewConfig } from "./modules/review.config";
+export type { ReferralConfig } from "./modules/referral.config";

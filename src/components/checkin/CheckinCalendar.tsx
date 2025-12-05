@@ -37,9 +37,17 @@ export function CheckinCalendar({
   isTodayChecked = false,
   className,
 }: CheckinCalendarProps) {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
+  // 使用useMemo缓存今日信息，避免每次渲染创建新对象
+  const todayInfo = useMemo(() => {
+    const today = new Date();
+    return {
+      year: today.getFullYear(),
+      month: today.getMonth(),
+      date: today.getDate(),
+    };
+  }, []);
+
+  const { year, month, date: todayDate } = todayInfo;
 
   // 生成日历数据
   const calendarDays = useMemo<CalendarDay[]>(() => {
@@ -58,14 +66,14 @@ export function CheckinCalendar({
     // 填充日期
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const isToday = day === today.getDate();
+      const isToday = day === todayDate;
       const isChecked = checkedDates.includes(dateStr) || (isToday && isTodayChecked);
       
       days.push({ day, isChecked, isToday });
     }
 
     return days;
-  }, [year, month, checkedDates, isTodayChecked, today]);
+  }, [year, month, todayDate, checkedDates, isTodayChecked]);
 
   const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
 
