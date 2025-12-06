@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-// 🔧 开发模式：跳过用户端登录验证（上线前改为 false）
-const DEV_SKIP_AUTH = true;
+// 开发模式：跳过用户端登录验证（生产环境自动关闭）
+const DEV_SKIP_AUTH = process.env.NODE_ENV === "development";
 
 // 需要登录才能访问的路径（用户端）
 const protectedPaths = [

@@ -37,6 +37,7 @@ export const bookingConfig = {
     confirmed: { label: "已确认", color: "bg-green-100 text-green-800" },
     completed: { label: "已完成", color: "bg-blue-100 text-blue-800" },
     cancelled: { label: "已取消", color: "bg-gray-100 text-gray-800" },
+    no_show: { label: "失约", color: "bg-red-100 text-red-800" },
     refunded: { label: "已退款", color: "bg-purple-100 text-purple-800" },
   },
   
@@ -117,6 +118,50 @@ export const bookingConfig = {
       { key: "confirmed", label: "进行中" },
       { key: "completed", label: "已完成" },
     ],
+  },
+  
+  // ==================== 积分发放配置 ====================
+  points: {
+    // 消费获得积分比例（每消费1元获得多少积分）
+    earnRatio: 1,
+    // 积分发放描述
+    earnDescription: "预约消费奖励",
+  },
+  
+  // ==================== 管理后台配置 ====================
+  admin: {
+    texts: {
+      pageTitle: "预约管理",
+      confirmAction: "确认到店",
+      completeAction: "确认完成",
+      noShowAction: "标记失约",
+      cancelAction: "取消预约",
+    },
+    // 预约类型
+    bookingTypes: [
+      { key: "all", label: "全部类型" },
+      { key: "venue", label: "场地预约" },
+      { key: "coach", label: "教练预约" },
+      { key: "course", label: "团课预约" },
+    ],
+    // 状态筛选
+    statusFilter: [
+      { key: "all", label: "全部状态" },
+      { key: "pending", label: "待确认" },
+      { key: "confirmed", label: "已确认" },
+      { key: "completed", label: "已完成" },
+      { key: "cancelled", label: "已取消" },
+      { key: "no_show", label: "失约" },
+    ],
+    // 状态配置
+    statusConfig: {
+      pending: { label: "待确认", color: "bg-yellow-100 text-yellow-700" },
+      confirmed: { label: "已确认", color: "bg-blue-100 text-blue-700" },
+      completed: { label: "已完成", color: "bg-green-100 text-green-700" },
+      cancelled: { label: "已取消", color: "bg-gray-100 text-gray-700" },
+      no_show: { label: "失约", color: "bg-red-100 text-red-700" },
+    },
+    pageSize: 20,
   },
 };
 

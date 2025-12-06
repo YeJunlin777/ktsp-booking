@@ -27,13 +27,15 @@ import { toast } from "sonner";
 interface Coach {
   id: string;
   name: string;
-  avatar?: string;
-  title?: string;
-  introduction?: string;
+  avatar?: string | null;
+  title?: string | null;
+  introduction?: string | null;
   specialty: string[];
   certifications?: string[];
   experience: number;
   price: number;
+  minAdvanceHours?: number | null;
+  freeCancelHours?: number | null;
   status: string;
   sortOrder: number;
 }
@@ -69,6 +71,8 @@ export function CoachFormDialog({
     certifications: "",
     experience: 1,
     price: 200,
+    minAdvanceHours: "",
+    freeCancelHours: "",
     status: "active",
     sortOrder: 0,
   });
@@ -87,6 +91,8 @@ export function CoachFormDialog({
         certifications: Array.isArray(coach.certifications) ? coach.certifications.join("、") : "",
         experience: coach.experience || 1,
         price: coach.price || 200,
+        minAdvanceHours: coach.minAdvanceHours != null ? String(coach.minAdvanceHours) : "",
+        freeCancelHours: coach.freeCancelHours != null ? String(coach.freeCancelHours) : "",
         status: coach.status || "active",
         sortOrder: coach.sortOrder || 0,
       });
@@ -101,6 +107,8 @@ export function CoachFormDialog({
         certifications: "",
         experience: 1,
         price: 200,
+        minAdvanceHours: "",
+        freeCancelHours: "",
         status: "active",
         sortOrder: 0,
       });
@@ -189,6 +197,8 @@ export function CoachFormDialog({
           .filter(Boolean),
         experience: formData.experience,
         price: formData.price,
+        minAdvanceHours: formData.minAdvanceHours ? parseInt(formData.minAdvanceHours) : null,
+        freeCancelHours: formData.freeCancelHours ? parseInt(formData.freeCancelHours) : null,
         status: formData.status,
         sortOrder: formData.sortOrder,
       };
@@ -254,6 +264,7 @@ export function CoachFormDialog({
                     src={formData.avatar}
                     alt="教练头像"
                     fill
+                    sizes="80px"
                     className="object-cover"
                   />
                 ) : (
@@ -359,6 +370,34 @@ export function CoachFormDialog({
             </div>
           </div>
 
+          {/* 预约规则 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="minAdvanceHours">最少提前预约（小时）</Label>
+              <Input
+                id="minAdvanceHours"
+                type="number"
+                min={0}
+                value={formData.minAdvanceHours}
+                onChange={(e) => setFormData({ ...formData, minAdvanceHours: e.target.value })}
+                placeholder="留空使用默认值(1小时)"
+              />
+              <p className="text-xs text-muted-foreground">用户必须提前多少小时预约</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="freeCancelHours">免费取消提前（小时）</Label>
+              <Input
+                id="freeCancelHours"
+                type="number"
+                min={0}
+                value={formData.freeCancelHours}
+                onChange={(e) => setFormData({ ...formData, freeCancelHours: e.target.value })}
+                placeholder="留空使用默认值(24小时)"
+              />
+              <p className="text-xs text-muted-foreground">开课前多少小时内取消需扣费</p>
+            </div>
+          </div>
+
           {/* 状态和排序 */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -384,8 +423,8 @@ export function CoachFormDialog({
                 min={0}
                 value={formData.sortOrder}
                 onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
-                placeholder="数字越小越靠前"
               />
+              <p className="text-xs text-muted-foreground">数字越大排名越靠前，如：100=置顶，0=默认</p>
             </div>
           </div>
 

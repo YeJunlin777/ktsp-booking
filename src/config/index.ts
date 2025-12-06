@@ -18,6 +18,9 @@
 export { appConfig } from "./app.config";
 export type { AppConfig } from "./app.config";
 
+// 通用配置
+export { commonConfig } from "./modules/common.config";
+
 // 子系统配置
 export { homeConfig } from "./modules/home.config";
 export { venueConfig } from "./modules/venue.config";
@@ -33,6 +36,7 @@ export { reviewConfig } from "./modules/review.config";
 export { referralConfig } from "./modules/referral.config";
 
 // 类型导出
+export type { CommonConfig } from "./modules/common.config";
 export type { HomeConfig, CategoryItem, QuickActionItem } from "./modules/home.config";
 export type { VenueConfig } from "./modules/venue.config";
 export type { CoachConfig } from "./modules/coach.config";

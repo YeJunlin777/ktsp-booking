@@ -62,6 +62,7 @@ export function BannerCarousel({ banners, className }: BannerCarouselProps) {
                 src={banner.image}
                 alt={banner.title || "Banner"}
                 fill
+                sizes="100vw"
                 className="object-cover"
                 priority
               />

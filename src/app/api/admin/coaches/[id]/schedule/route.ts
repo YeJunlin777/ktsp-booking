@@ -138,6 +138,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       await prisma.coachSchedule.createMany({
         data: newSchedules,
+        skipDuplicates: true,  // 跳过重复记录（基于唯一约束）
       });
 
       return success({
@@ -174,6 +175,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       await prisma.coachSchedule.createMany({
         data: newSchedules,
+        skipDuplicates: true,  // 跳过重复记录（基于唯一约束）
       });
 
       return success({

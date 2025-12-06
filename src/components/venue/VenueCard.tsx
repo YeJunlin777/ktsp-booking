@@ -57,6 +57,7 @@ export function VenueCard({
               src={image}
               alt={name}
               fill
+              sizes="(max-width: 768px) 100vw, 300px"
               className="object-cover"
             />
           ) : (

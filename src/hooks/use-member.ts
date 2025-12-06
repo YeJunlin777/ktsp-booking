@@ -88,7 +88,7 @@ export function useUserStats() {
       setStats(data);
     } catch (err) {
       console.error("获取用户统计失败:", err);
-      setError("加载失败");
+      setError(memberConfig.texts.loadFailed);
     } finally {
       setLoading(false);
     }

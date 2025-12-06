@@ -42,10 +42,27 @@ async function main() {
   console.log("✅ 管理员:", admin.username);
 
   // ========== 1.5 创建测试用户 ==========
-  const testUser = await prisma.user.upsert({
-    where: { phone: "13800138000" },
-    update: {},
-    create: {
+  // 先删除关联数据和旧的测试用户（如果存在）
+  await prisma.booking.deleteMany({
+    where: { userId: "dev_user_001" },
+  });
+  await prisma.checkin.deleteMany({
+    where: { userId: "dev_user_001" },
+  });
+  await prisma.pointLog.deleteMany({
+    where: { userId: "dev_user_001" },
+  });
+  await prisma.user.deleteMany({
+    where: { OR: [{ id: "dev_user_001" }, { phone: "13800138000" }] },
+  });
+  // 重置排班状态
+  await prisma.coachSchedule.updateMany({
+    data: { isBooked: false },
+  });
+  // 创建测试用户
+  const testUser = await prisma.user.create({
+    data: {
+      id: "dev_user_001",  // 固定ID，与 DEV_USER_ID 一致
       phone: "13800138000",
       name: "测试用户",
       nickname: "高尔夫爱好者",
@@ -186,6 +203,59 @@ async function main() {
     }),
   ]);
   console.log("✅ 商品:", products.length, "个");
+
+  // ========== 4.5 创建团体课程 ==========
+  const nextWeek = new Date();
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const nextMonth = new Date();
+  nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+  const courses = await Promise.all([
+    prisma.course.upsert({
+      where: { id: "course_01" },
+      update: {},
+      create: {
+        id: "course_01",
+        name: "高尔夫入门班",
+        description: "零基础学员专属，从握杆到挥杆全面教学",
+        image: "https://placehold.co/400x300/22c55e/white?text=Beginner",
+        category: "beginner",
+        coachId: "coach_01",
+        coachName: "王教练",
+        totalLessons: 4,
+        maxStudents: 8,
+        enrolled: 3,
+        price: 800,
+        startDate: nextWeek,
+        endDate: nextMonth,
+        enrollDeadline: new Date(),
+        schedule: "每周六 09:00-11:00",
+        status: "enrolling",
+      },
+    }),
+    prisma.course.upsert({
+      where: { id: "course_02" },
+      update: {},
+      create: {
+        id: "course_02",
+        name: "青少年高尔夫营",
+        description: "6-14岁青少年专属培训课程，培养兴趣与技能",
+        image: "https://placehold.co/400x300/3b82f6/white?text=Youth",
+        category: "youth",
+        coachId: "coach_02",
+        coachName: "李教练",
+        totalLessons: 8,
+        maxStudents: 12,
+        enrolled: 10,
+        price: 1500,
+        startDate: nextWeek,
+        endDate: nextMonth,
+        schedule: "每周日 14:00-16:00",
+        status: "enrolling",
+      },
+    }),
+  ]);
+  console.log("✅ 课程:", courses.length, "门");
 
   // ========== 5. 创建首页 Banner ==========
   const banners = await Promise.all([

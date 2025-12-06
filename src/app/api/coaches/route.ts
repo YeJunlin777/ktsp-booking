@@ -25,10 +25,11 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // 查询教练列表
+    // 查询教练列表（排序权重优先，然后按评分）
     const coaches = await prisma.coach.findMany({
       where,
       orderBy: [
+        { sortOrder: "desc" },
         { rating: "desc" },
         { reviewCount: "desc" },
       ],

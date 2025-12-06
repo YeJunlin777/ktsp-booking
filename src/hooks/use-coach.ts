@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { get } from "@/lib/api";
-import { coachConfig } from "@/config";
+import { coachConfig, commonConfig } from "@/config";
 
 // ==================== 类型定义 ====================
 
@@ -26,9 +26,12 @@ interface CoachDetail extends Coach {
 }
 
 interface ScheduleSlot {
-  time: string;
+  id: string;           // 排班ID
+  time: string;         // 开始时间 "09:00"
+  endTime: string;      // 结束时间 "10:00"
   available: boolean;
-  duration: number;
+  unavailableReason?: string;  // 不可用原因
+  duration: number;     // 时长（分钟）
   price: number;
 }
 
@@ -146,7 +149,7 @@ export function useCoachSchedule(coachId: string) {
       setSelectedSlot(null); // 切换日期时清空选择
     } catch (err) {
       console.error("获取排班失败:", err);
-      setError("加载排班失败");
+      setError(commonConfig.errors.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -161,12 +164,16 @@ export function useCoachSchedule(coachId: string) {
     setSelectedSlot(time);
   }, []);
 
+  // 获取选中时段的完整信息
+  const selectedSlotInfo = useMemo(() => {
+    if (!selectedSlot) return null;
+    return slots.find((s) => s.time === selectedSlot) || null;
+  }, [selectedSlot, slots]);
+
   // 获取选中时段的价格
   const selectedPrice = useMemo(() => {
-    if (!selectedSlot) return 0;
-    const slot = slots.find((s) => s.time === selectedSlot);
-    return slot?.price || 0;
-  }, [selectedSlot, slots]);
+    return selectedSlotInfo?.price || 0;
+  }, [selectedSlotInfo]);
 
   return {
     loading,
@@ -174,6 +181,7 @@ export function useCoachSchedule(coachId: string) {
     slots,
     selectedDate,
     selectedSlot,
+    selectedSlotInfo,  // 完整的 slot 信息
     selectedPrice,
     onDateChange: setSelectedDate,
     onSlotSelect: handleSlotSelect,

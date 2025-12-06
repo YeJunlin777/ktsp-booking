@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { get, post } from "@/lib/api";
-import { courseConfig } from "@/config";
+import { courseConfig, commonConfig } from "@/config";
 import { toast } from "sonner";
 
 // ==================== 类型定义 ====================
@@ -15,6 +15,7 @@ interface Course {
   level: string;
   coachName: string;
   startTime: string;
+  enrollDeadline?: string | null;
   duration: number;
   capacity: number;
   enrolled: number;
@@ -22,16 +23,36 @@ interface Course {
   status: string;
 }
 
+interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+interface UserEnrollment {
+  bookingId: string;
+  status: string;
+  enrolledAt: string;
+}
+
+interface SyllabusItem {
+  title?: string;
+  lesson?: string;
+  content?: string;
+}
+
 interface CourseDetail extends Course {
   description?: string | null;
   coachId?: string | null;
-  syllabus?: unknown;
+  syllabus?: SyllabusItem[] | null;
   totalLessons: number;
   endTime: string;
   enrollDeadline?: string | null;
   schedule?: string | null;
   requirements?: string | null;
   location?: string | null;
+  userEnrollment?: UserEnrollment | null;
 }
 
 // ==================== 课程列表 Hook ====================
@@ -39,38 +60,56 @@ interface CourseDetail extends Course {
 /**
  * 课程列表 Hook
  * 
- * 【职责】获取和筛选课程列表
+ * 【职责】获取和筛选课程列表，支持分页
  */
 export function useCourseList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
 
-  const fetchCourses = useCallback(async (category: string) => {
+  const fetchCourses = useCallback(async (category: string, pageNum: number) => {
     try {
       setLoading(true);
       setError(null);
 
-      const url = category !== "all" 
-        ? `/api/courses?category=${category}` 
-        : "/api/courses";
-      const data = await get<Course[]>(url);
-      setCourses(data || []);
+      const params = new URLSearchParams();
+      if (category !== "all") params.set("category", category);
+      params.set("page", String(pageNum));
+      params.set("pageSize", "10");
+
+      const response = await fetch(`/api/courses?${params}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setCourses(result.data || []);
+        if (result.meta) {
+          setPagination(result.meta);
+        }
+      } else {
+        throw new Error(result.error?.message || commonConfig.errors.loadFailed);
+      }
     } catch (err) {
       console.error("获取课程列表失败:", err);
-      setError("加载失败，请刷新重试");
+      setError(commonConfig.errors.loadFailed);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchCourses(selectedCategory);
-  }, [fetchCourses, selectedCategory]);
+    fetchCourses(selectedCategory, page);
+  }, [fetchCourses, selectedCategory, page]);
 
   const handleCategoryChange = useCallback((category: string) => {
     setSelectedCategory(category);
+    setPage(1); // 切换分类时重置页码
+  }, []);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
   }, []);
 
   return {
@@ -78,8 +117,11 @@ export function useCourseList() {
     error,
     courses,
     selectedCategory,
+    page,
+    pagination,
     onCategoryChange: handleCategoryChange,
-    refresh: () => fetchCourses(selectedCategory),
+    onPageChange: handlePageChange,
+    refresh: () => fetchCourses(selectedCategory, page),
   };
 }
 
@@ -124,10 +166,11 @@ export function useCourseDetail(courseId: string) {
 /**
  * 课程报名 Hook
  * 
- * 【职责】处理课程报名
+ * 【职责】处理课程报名和取消报名
  */
 export function useEnrollCourse() {
   const [enrolling, setEnrolling] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const enrollCourse = useCallback(async (courseId: string) => {
     try {
@@ -145,14 +188,36 @@ export function useEnrollCourse() {
       return result;
     } catch (err) {
       console.error("课程报名失败:", err);
-      toast.error("报名失败，请重试");
+      const message = err instanceof Error ? err.message : commonConfig.errors.operationFailed;
+      toast.error(message);
       return null;
     } finally {
       setEnrolling(false);
     }
   }, []);
 
-  return { enrolling, enrollCourse };
+  const cancelEnrollment = useCallback(async (courseId: string) => {
+    try {
+      setCancelling(true);
+
+      await post<{ message: string }>(
+        `/api/courses/${courseId}/enroll/cancel`,
+        {}
+      );
+      
+      toast.success(courseConfig.texts.cancelSuccess);
+      return true;
+    } catch (err) {
+      console.error("取消报名失败:", err);
+      const message = err instanceof Error ? err.message : commonConfig.errors.operationFailed;
+      toast.error(message);
+      return false;
+    } finally {
+      setCancelling(false);
+    }
+  }, []);
+
+  return { enrolling, cancelling, enrollCourse, cancelEnrollment };
 }
 
 // ==================== 配置 Hook ====================

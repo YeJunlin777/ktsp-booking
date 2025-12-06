@@ -11,6 +11,10 @@ import {
   Trash2,
   MoreHorizontal,
 } from "lucide-react";
+import { venueConfig } from "@/config";
+
+const { admin, venueTypes } = venueConfig;
+const { texts: adminTexts, texts: { tableHeaders, status: statusConfig } } = admin;
 
 interface Venue {
   id: string;
@@ -53,18 +57,8 @@ export default function AdminVenuesPage() {
     }
   };
 
-  const typeLabels: Record<string, string> = {
-    driving_range: "打位",
-    simulator: "模拟器",
-    vip_room: "VIP房",
-    putting_green: "果岭",
-  };
-
-  const statusLabels: Record<string, { label: string; color: string }> = {
-    active: { label: "营业中", color: "bg-green-100 text-green-700" },
-    maintenance: { label: "维护中", color: "bg-yellow-100 text-yellow-700" },
-    inactive: { label: "已关闭", color: "bg-gray-100 text-gray-700" },
-  };
+  const typeLabels = venueTypes.reduce((acc, t) => ({ ...acc, [t.key]: t.label }), {} as Record<string, string>);
+  const statusLabels = statusConfig as Record<string, { label: string; color: string }>;
 
   const filteredVenues = venues.filter((venue) =>
     venue.name.toLowerCase().includes(searchKeyword.toLowerCase())
@@ -73,10 +67,10 @@ export default function AdminVenuesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">场地管理</h1>
+        <h1 className="text-2xl font-bold">{adminTexts.pageTitle}</h1>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          新增场地
+          {adminTexts.addButton}
         </Button>
       </div>
 
@@ -87,7 +81,7 @@ export default function AdminVenuesPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="搜索场地名称..."
+                placeholder={adminTexts.searchPlaceholder}
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 className="pl-10"
@@ -101,21 +95,21 @@ export default function AdminVenuesPage() {
       {/* 场地列表 */}
       <Card>
         <CardHeader>
-          <CardTitle>场地列表</CardTitle>
+          <CardTitle>{adminTexts.listTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">加载中...</div>
+            <div className="py-8 text-center text-muted-foreground">{adminTexts.loadingText}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b text-left text-sm text-muted-foreground">
-                    <th className="pb-3 font-medium">场地名称</th>
-                    <th className="pb-3 font-medium">类型</th>
-                    <th className="pb-3 font-medium">价格</th>
-                    <th className="pb-3 font-medium">状态</th>
-                    <th className="pb-3 font-medium">操作</th>
+                    <th className="pb-3 font-medium">{tableHeaders.name}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.type}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.price}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.status}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">

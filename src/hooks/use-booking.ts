@@ -46,7 +46,13 @@ interface CreateBookingParams {
   venueId?: string;
   coachId?: string;
   date: string;
-  slots: string[];
+  // 场地预约
+  slots?: string[];
+  // 教练预约
+  startTime?: string;
+  endTime?: string;
+  scheduleId?: string;
+  duration?: number;
   totalPrice: number;
 }
 

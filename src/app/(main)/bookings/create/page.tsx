@@ -26,8 +26,17 @@ export default function CreateBookingPage() {
   const venueId = searchParams.get("venueId");
   const coachId = searchParams.get("coachId");
   const date = searchParams.get("date") || "";
-  const slotsParam = searchParams.get("slots") || searchParams.get("time") || "";
+  
+  // 场地预约参数
+  const slotsParam = searchParams.get("slots") || "";
   const slots = slotsParam ? slotsParam.split(",") : [];
+  
+  // 教练预约参数
+  const startTime = searchParams.get("startTime") || "";
+  const endTime = searchParams.get("endTime") || "";
+  const scheduleId = searchParams.get("scheduleId") || "";
+  const duration = Number(searchParams.get("duration")) || 60;
+  const price = Number(searchParams.get("price")) || 0;
   
   const type = venueId ? "venue" : "coach";
 
@@ -42,14 +51,17 @@ export default function CreateBookingPage() {
 
   // 计算价格
   const priceInfo = useMemo(() => {
+    if (type === "coach") {
+      // 教练预约：使用 URL 传递的价格
+      return { unitPrice: price, totalPrice: price };
+    }
+    
+    // 场地预约
     if (!target) return { unitPrice: 0, totalPrice: 0 };
-    
     const unitPrice = Number(target.price);
-    const duration = type === "venue" ? slots.length : 1;
-    const totalPrice = unitPrice * duration;
-    
+    const totalPrice = unitPrice * slots.length;
     return { unitPrice, totalPrice };
-  }, [target, type, slots.length]);
+  }, [target, type, slots.length, price]);
 
   // 提交预约
   const handleSubmit = async () => {
@@ -58,7 +70,13 @@ export default function CreateBookingPage() {
       venueId: venueId || undefined,
       coachId: coachId || undefined,
       date,
-      slots,
+      // 场地预约参数
+      slots: type === "venue" ? slots : undefined,
+      // 教练预约参数
+      startTime: type === "coach" ? startTime : undefined,
+      endTime: type === "coach" ? endTime : undefined,
+      scheduleId: type === "coach" ? scheduleId : undefined,
+      duration: type === "coach" ? duration : undefined,
       totalPrice: priceInfo.totalPrice,
     });
 
@@ -78,8 +96,13 @@ export default function CreateBookingPage() {
     );
   }
 
+  // 参数校验
+  const isValidParams = type === "venue" 
+    ? (target && date && slots.length > 0)
+    : (target && date && startTime && scheduleId);
+
   // 参数错误
-  if (!target || !date || slots.length === 0) {
+  if (!isValidParams) {
     return (
       <div className="p-4">
         <Button variant="ghost" onClick={() => router.back()}>
@@ -115,10 +138,10 @@ export default function CreateBookingPage() {
       <div className="p-4">
         <BookingSummary
           type={type}
-          targetName={target.name}
+          targetName={target!.name}
           targetType={targetType || undefined}
           date={date}
-          slots={slots}
+          slots={type === "venue" ? slots : [`${startTime}-${endTime}`]}
           unitPrice={priceInfo.unitPrice}
           totalPrice={priceInfo.totalPrice}
         />

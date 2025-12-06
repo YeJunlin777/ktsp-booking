@@ -87,6 +87,7 @@ export function RecommendList({
                     src={venue.image}
                     alt={venue.name}
                     fill
+                    sizes="(max-width: 768px) 50vw, 200px"
                     className="object-cover"
                   />
                 ) : (

@@ -72,6 +72,7 @@ export function CourseHeader({
             src={image}
             alt={name}
             fill
+            sizes="100vw"
             className="object-cover"
             priority
           />

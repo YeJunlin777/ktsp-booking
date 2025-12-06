@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Users, User } from "lucide-react";
 import { courseConfig } from "@/config";
+import { EnrollCountdown } from "./EnrollCountdown";
 
 interface CourseCardProps {
   id: string;
@@ -16,6 +17,7 @@ interface CourseCardProps {
   level: string;
   coachName: string;
   startTime: string;
+  enrollDeadline?: string | null;
   duration: number;
   capacity: number;
   enrolled: number;
@@ -38,6 +40,7 @@ export function CourseCard({
   level,
   coachName,
   startTime,
+  enrollDeadline,
   duration,
   capacity,
   enrolled,
@@ -72,6 +75,7 @@ export function CourseCard({
               src={image}
               alt={name}
               fill
+              sizes="(max-width: 768px) 100vw, 300px"
               className="object-cover"
             />
           ) : (
@@ -125,11 +129,16 @@ export function CourseCard({
             </div>
           </div>
 
-          {/* 价格 */}
-          <div className="pt-2 border-t flex items-center justify-between">
-            <span className="text-lg font-bold text-primary">¥{price}</span>
-            {status === "enrolling" && remaining > 0 && (
-              <span className="text-xs text-primary">可报名</span>
+          {/* 价格和倒计时 */}
+          <div className="pt-2 border-t space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-bold text-primary">¥{price}</span>
+              {status === "enrolling" && remaining > 0 && (
+                <span className="text-xs text-primary">可报名</span>
+              )}
+            </div>
+            {enrollDeadline && status === "enrolling" && (
+              <EnrollCountdown deadline={enrollDeadline} />
             )}
           </div>
         </CardContent>

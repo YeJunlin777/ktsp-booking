@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,16 +14,20 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import { get, del } from "@/lib/api";
-import { toast } from "sonner";
+import { useAdminCoachList } from "@/hooks/use-admin-coach";
 import { CoachFormDialog, CoachScheduleDialog } from "@/components/admin/coach";
+import { coachConfig } from "@/config";
 
+const { admin } = coachConfig;
+const { texts: adminTexts, texts: { tableHeaders, status: statusConfig } } = admin;
+
+// 教练类型（从 Hook 导出类型）
 interface Coach {
   id: string;
   name: string;
-  avatar?: string;
-  title?: string;
-  introduction?: string;
+  avatar?: string | null;
+  title?: string | null;
+  introduction?: string | null;
   specialty: string[];
   certifications?: string[];
   experience: number;
@@ -31,6 +35,8 @@ interface Coach {
   reviewCount: number;
   lessonCount: number;
   price: number;
+  minAdvanceHours?: number | null;
+  freeCancelHours?: number | null;
   status: string;
   sortOrder: number;
   createdAt: string;
@@ -39,62 +45,30 @@ interface Coach {
 /**
  * 教练管理页面
  * 
- * 开发者 B 负责
+ * 【职责】只负责布局和组合组件
+ * 【Hook】业务逻辑封装在 useAdminCoachList
  */
 export default function AdminCoachesPage() {
-  const [coaches, setCoaches] = useState<Coach[]>([]);
-  const [loading, setLoading] = useState(true);
+  // 使用 Hook 获取数据和操作
+  const { loading, coaches, search, refresh, deleteCoach } = useAdminCoachList();
+  
+  // 本地 UI 状态
   const [searchKeyword, setSearchKeyword] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
-  
-  // 弹窗状态
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
 
-  const fetchCoaches = useCallback(async (keyword?: string) => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (keyword) {
-        params.set("keyword", keyword);
-      }
-      const result = await get<Coach[]>(`/api/admin/coaches?${params}`);
-      setCoaches(result || []);
-    } catch (error) {
-      console.error("获取教练列表失败:", error);
-      toast.error("获取教练列表失败");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // 只在初始化时加载
-  useEffect(() => {
-    fetchCoaches();
-  }, [fetchCoaches]);
-
-  // 搜索处理（回车或点击搜索时）
+  // 搜索处理
   const handleSearch = () => {
-    fetchCoaches(searchKeyword);
+    search(searchKeyword);
   };
 
+  // 删除处理
   const handleDelete = async (coach: Coach) => {
-    if (!confirm(`确定要删除教练「${coach.name}」吗？`)) {
-      return;
-    }
-    
-    try {
-      setDeleting(coach.id);
-      await del(`/api/admin/coaches/${coach.id}`);
-      toast.success("教练已删除");
-      fetchCoaches();
-    } catch (error) {
-      console.error("删除教练失败:", error);
-      toast.error("删除失败，该教练可能有关联预约");
-    } finally {
-      setDeleting(null);
-    }
+    setDeleting(coach.id);
+    await deleteCoach(coach.id, coach.name);
+    setDeleting(null);
   };
 
   // 打开新增弹窗
@@ -115,18 +89,15 @@ export default function AdminCoachesPage() {
     setScheduleDialogOpen(true);
   };
 
-  const statusLabels: Record<string, { label: string; color: string }> = {
-    active: { label: "在职", color: "bg-green-100 text-green-700" },
-    leave: { label: "休假", color: "bg-yellow-100 text-yellow-700" },
-  };
+  const statusLabels = statusConfig as Record<string, { label: string; color: string }>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">教练管理</h1>
+        <h1 className="text-2xl font-bold">{adminTexts.pageTitle}</h1>
         <Button onClick={handleAdd}>
           <Plus className="mr-2 h-4 w-4" />
-          新增教练
+          {adminTexts.addButton}
         </Button>
       </div>
 
@@ -137,7 +108,7 @@ export default function AdminCoachesPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="搜索教练姓名，按回车搜索..."
+                placeholder={adminTexts.searchPlaceholder}
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -146,11 +117,11 @@ export default function AdminCoachesPage() {
             </div>
             <Button variant="outline" onClick={handleSearch}>
               <Search className="mr-2 h-4 w-4" />
-              搜索
+              {adminTexts.searchButton}
             </Button>
-            <Button variant="outline" onClick={() => fetchCoaches()}>
+            <Button variant="outline" onClick={refresh}>
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              刷新
+              {adminTexts.refreshButton}
             </Button>
           </div>
         </CardContent>
@@ -159,31 +130,31 @@ export default function AdminCoachesPage() {
       {/* 教练列表 */}
       <Card>
         <CardHeader>
-          <CardTitle>教练列表（{coaches.length}人）</CardTitle>
+          <CardTitle>{adminTexts.listTitle}（{coaches.length}人）</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">加载中...</span>
+              <span className="ml-2 text-muted-foreground">{adminTexts.loadingText}</span>
             </div>
           ) : coaches.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
-              暂无教练数据
+              {adminTexts.emptyText}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b text-left text-sm text-muted-foreground">
-                    <th className="pb-3 font-medium">教练</th>
-                    <th className="pb-3 font-medium">职称</th>
-                    <th className="pb-3 font-medium">教龄</th>
-                    <th className="pb-3 font-medium">评分</th>
-                    <th className="pb-3 font-medium">课时数</th>
-                    <th className="pb-3 font-medium">课时费</th>
-                    <th className="pb-3 font-medium">状态</th>
-                    <th className="pb-3 font-medium">操作</th>
+                    <th className="pb-3 font-medium">{tableHeaders.name}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.title}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.experience}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.rating}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.lessons}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.price}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.status}</th>
+                    <th className="pb-3 font-medium">{tableHeaders.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -259,7 +230,7 @@ export default function AdminCoachesPage() {
         open={formDialogOpen}
         onOpenChange={setFormDialogOpen}
         coach={selectedCoach}
-        onSuccess={fetchCoaches}
+        onSuccess={refresh}
       />
 
       {/* 排班管理弹窗 */}

@@ -5,8 +5,8 @@ import { getCurrentUserId } from "@/lib/session";
 import { bookingConfig } from "@/config";
 import { BookingService } from "@/lib/booking-service";
 
-// 🔧 开发模式：跳过登录验证（上线前改为 false）
-const DEV_SKIP_AUTH = true;
+// 开发模式：跳过登录验证（生产环境自动关闭）
+const DEV_SKIP_AUTH = process.env.NODE_ENV === "development";
 const DEV_USER_ID = "dev_user_001";
 
 /**
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { type, venueId, coachId, date, startTime, duration, totalPrice, requestId } = body;
+    const { type, venueId, coachId, scheduleId, date, startTime, duration, totalPrice, requestId } = body;
 
     // 基本参数校验
     if (!type || !date || !startTime || !duration) {
@@ -121,6 +121,7 @@ export async function POST(request: NextRequest) {
       type,
       venueId,
       coachId,
+      scheduleId, // 教练排班ID
       date,
       startTime,
       duration: Number(duration),

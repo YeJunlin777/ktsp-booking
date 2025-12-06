@@ -51,6 +51,7 @@ export function VenueHeader({
             src={images[0]}
             alt={name}
             fill
+            sizes="100vw"
             className="object-cover"
             priority
           />

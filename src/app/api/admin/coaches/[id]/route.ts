@@ -84,6 +84,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       certifications,
       experience,
       price,
+      minAdvanceHours,
+      freeCancelHours,
       status,
       sortOrder,
     } = body;
@@ -100,6 +102,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         ...(certifications !== undefined && { certifications }),
         ...(experience !== undefined && { experience }),
         ...(price !== undefined && { price }),
+        ...(minAdvanceHours !== undefined && { minAdvanceHours: minAdvanceHours || null }),
+        ...(freeCancelHours !== undefined && { freeCancelHours: freeCancelHours || null }),
         ...(status !== undefined && { status }),
         ...(sortOrder !== undefined && { sortOrder }),
       },

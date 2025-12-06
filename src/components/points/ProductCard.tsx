@@ -53,6 +53,7 @@ export function ProductCard({
             src={image}
             alt={name}
             fill
+            sizes="(max-width: 768px) 50vw, 200px"
             className="object-cover"
           />
         ) : (

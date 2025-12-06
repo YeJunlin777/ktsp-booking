@@ -29,6 +29,7 @@ export default function CoachDetailPage({ params }: PageProps) {
     slots,
     selectedDate,
     selectedSlot,
+    selectedSlotInfo,
     selectedPrice,
     onDateChange,
     onSlotSelect,
@@ -68,12 +69,16 @@ export default function CoachDetailPage({ params }: PageProps) {
   }
 
   const handleBooking = () => {
-    if (!selectedSlot) return;
+    if (!selectedSlotInfo) return;
     
-    // TODO: 跳转到预约确认页面
+    // 跳转到预约确认页面，传递完整参数
     const query = new URLSearchParams({
       date: selectedDate,
-      time: selectedSlot,
+      startTime: selectedSlotInfo.time,
+      endTime: selectedSlotInfo.endTime,
+      scheduleId: selectedSlotInfo.id,
+      duration: String(selectedSlotInfo.duration),
+      price: String(selectedSlotInfo.price),
     });
     router.push(`/bookings/create?coachId=${id}&${query}`);
   };
@@ -147,7 +152,7 @@ export default function CoachDetailPage({ params }: PageProps) {
             )}
           </div>
           <Button
-            disabled={!selectedSlot}
+            disabled={!selectedSlotInfo}
             onClick={handleBooking}
           >
             {config.texts.confirmText}

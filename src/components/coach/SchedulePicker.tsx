@@ -5,8 +5,11 @@ import { cn } from "@/lib/utils";
 import { coachConfig } from "@/config";
 
 interface ScheduleSlot {
+  id: string;
   time: string;
+  endTime: string;
   available: boolean;
+  unavailableReason?: string;  // 不可用原因
   duration: number;
   price: number;
 }
@@ -89,6 +92,7 @@ export function SchedulePicker({
                   key={slot.time}
                   onClick={() => handleSlotClick(slot)}
                   disabled={isDisabled}
+                  title={slot.unavailableReason}
                   className={cn(
                     "flex flex-col items-center py-2 px-1 rounded-lg border text-sm transition-all",
                     isSelected && "border-primary bg-primary/10 text-primary",
@@ -96,9 +100,9 @@ export function SchedulePicker({
                     !isSelected && !isDisabled && "hover:border-primary/50"
                   )}
                 >
-                  <span className="font-medium">{slot.time}</span>
+                  <span className="font-medium">{slot.time}-{slot.endTime}</span>
                   <span className="text-xs">
-                    {slot.available ? `¥${slot.price}` : "已约"}
+                    {slot.available ? `¥${slot.price}` : (slot.unavailableReason || "不可约")}
                   </span>
                 </button>
               );
@@ -119,7 +123,7 @@ export function SchedulePicker({
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded bg-muted opacity-50" />
-          <span>已约</span>
+          <span>不可约</span>
         </div>
       </div>
     </div>

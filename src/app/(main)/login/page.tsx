@@ -10,6 +10,10 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, Phone, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { commonConfig } from "@/config";
+
+const { login: loginConfig } = commonConfig;
+const texts = loginConfig.user;
 
 /**
  * 用户登录页面
@@ -30,7 +34,7 @@ export default function LoginPage() {
   // 发送验证码
   const handleSendCode = async () => {
     if (!formData.phone || formData.phone.length !== 11) {
-      toast.error("请输入正确的手机号");
+      toast.error(texts.invalidPhone);
       return;
     }
 
@@ -40,7 +44,7 @@ export default function LoginPage() {
       // await post("/api/auth/send-code", { phone: formData.phone });
       
       // 模拟发送成功
-      toast.success("验证码已发送（开发模式：123456）");
+      toast.success(texts.codeSentDev);
       setStep("code");
       
       // 开始倒计时
@@ -55,7 +59,7 @@ export default function LoginPage() {
         });
       }, 1000);
     } catch {
-      toast.error("发送验证码失败");
+      toast.error(texts.sendCodeFailed);
     } finally {
       setLoading(false);
     }
@@ -64,7 +68,7 @@ export default function LoginPage() {
   // 验证码登录
   const handleLogin = async () => {
     if (!formData.code) {
-      toast.error("请输入验证码");
+      toast.error(texts.enterCode);
       return;
     }
 
@@ -75,14 +79,14 @@ export default function LoginPage() {
       
       // 开发模式：验证码 123456 直接通过
       if (formData.code === "123456") {
-        toast.success("登录成功");
+        toast.success(texts.loginSuccess);
         router.push("/");
         router.refresh();
       } else {
-        toast.error("验证码错误");
+        toast.error(texts.codeError);
       }
     } catch {
-      toast.error("登录失败");
+      toast.error(texts.loginFailed);
     } finally {
       setLoading(false);
     }
@@ -93,11 +97,11 @@ export default function LoginPage() {
     try {
       setLoading(true);
       // 模拟登录测试账号
-      toast.success("测试账号登录成功");
+      toast.success(texts.testLoginSuccess);
       router.push("/");
       router.refresh();
     } catch {
-      toast.error("登录失败");
+      toast.error(texts.loginFailed);
     } finally {
       setLoading(false);
     }
