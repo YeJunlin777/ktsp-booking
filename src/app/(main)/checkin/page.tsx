@@ -14,8 +14,8 @@ import {
   EarnRulesCard,
 } from "@/components/checkin";
 
-// 🔧 开发模式：跳过登录验证（上线前改为 false）
-const DEV_SKIP_AUTH = true;
+// 开发模式：跳过登录验证（生产环境自动关闭）
+const DEV_SKIP_AUTH = process.env.NODE_ENV === "development";
 
 /**
  * 签到页面

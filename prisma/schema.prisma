@@ -156,6 +156,7 @@ model Booking {
   venueId       String?
   coachId       String?
   courseId      String?
+  scheduleId    String?                       // 教练排班ID（教练预约时使用）
   
   bookingType   String                        // venue/coach/course
   bookingDate   DateTime                      // 预约日期
@@ -211,6 +212,11 @@ model Coach {
   rating         Decimal  @default(5.0) @db.Decimal(2, 1)  // 评分
   reviewCount    Int      @default(0)         // 评价数
   lessonCount    Int      @default(0)         // 授课数
+  
+  // 预约规则（可覆盖全局配置）
+  minAdvanceHours  Int?                       // 最少提前预约小时数（null=使用全局配置）
+  freeCancelHours  Int?                       // 免费取消提前小时数（null=使用全局配置）
+  
   status         String   @default("active")
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
@@ -234,6 +240,7 @@ model CoachSchedule {
   
   coach     Coach    @relation(fields: [coachId], references: [id])
   
+  @@unique([coachId, date, startTime])    // 防止重复排班
   @@index([coachId, date])
   @@map("coach_schedules")
 }

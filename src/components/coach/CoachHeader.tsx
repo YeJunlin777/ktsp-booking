@@ -50,6 +50,7 @@ export function CoachHeader({
               src={avatar}
               alt={name}
               fill
+              sizes="96px"
               className="object-cover"
               priority
             />

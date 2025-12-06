@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { feedbackConfig } from "@/config/modules/feedback.config";
+import { commonConfig } from "@/config";
 
 /**
  * 反馈项类型
@@ -59,12 +60,12 @@ export function useFeedback() {
           });
           return true;
         } else {
-          toast.error(data.error?.message || "提交失败");
+          toast.error(data.error?.message || commonConfig.errors.submitFailed);
           return false;
         }
       } catch (err) {
         console.error("提交反馈失败:", err);
-        toast.error("提交失败，请重试");
+        toast.error(commonConfig.errors.submitFailed);
         return false;
       } finally {
         setSubmitting(false);

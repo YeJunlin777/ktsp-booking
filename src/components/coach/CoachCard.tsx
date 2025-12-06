@@ -59,6 +59,7 @@ export function CoachCard({
                   src={avatar}
                   alt={name}
                   fill
+                  sizes="64px"
                   className="object-cover"
                 />
               ) : (

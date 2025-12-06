@@ -44,11 +44,13 @@ export function UserCard({
 
   return (
     <Card className={cn("overflow-hidden", className)}>
-      {/* 背景渐变 */}
+      {/* 背景渐变 - 使用 CSS 变量实现动态颜色 */}
       <div 
-        className="h-24 bg-gradient-to-r from-primary to-primary/70"
-        style={{ background: `linear-gradient(135deg, ${levelConfig.color}, ${levelConfig.color}88)` }}
-      />
+        className="h-24"
+        style={{ '--level-color': levelConfig.color } as React.CSSProperties}
+      >
+        <div className="w-full h-full bg-gradient-to-br from-[var(--level-color)] to-[var(--level-color)]/70" />
+      </div>
       
       <CardContent className="relative pt-0 pb-4 -mt-12">
         <div className="flex items-end gap-4">
@@ -59,6 +61,7 @@ export function UserCard({
                 src={avatar}
                 alt={name}
                 fill
+                sizes="64px"
                 className="object-cover"
               />
             ) : (
@@ -73,7 +76,8 @@ export function UserCard({
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold">{name}</h2>
               <Badge 
-                style={{ backgroundColor: levelConfig.color, color: "#fff" }}
+                className="text-white"
+                style={{ '--level-color': levelConfig.color, backgroundColor: 'var(--level-color)' } as React.CSSProperties}
               >
                 {levelConfig.name}
               </Badge>
@@ -112,9 +116,10 @@ export function UserCard({
               <div 
                 className="h-full rounded-full transition-all"
                 style={{ 
+                  '--level-color': levelConfig.color,
                   width: `${progressToNext}%`,
-                  backgroundColor: levelConfig.color,
-                }}
+                  backgroundColor: 'var(--level-color)',
+                } as React.CSSProperties}
               />
             </div>
           )}

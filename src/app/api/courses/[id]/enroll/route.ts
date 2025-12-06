@@ -4,8 +4,26 @@ import { success, Errors } from "@/lib/response";
 import { getCurrentUserId } from "@/lib/session";
 import { courseConfig } from "@/config";
 
-// 🔧 开发模式：跳过登录验证（上线前改为 false）
-const DEV_SKIP_AUTH = true;
+// 计算课程状态（与列表/详情保持一致）
+function calcCourseStatus(
+  enrolled: number,
+  maxStudents: number,
+  startDate: Date,
+  endDate: Date,
+  enrollDeadline: Date | null
+): string {
+  const now = new Date();
+
+  if (now >= endDate) return "ended";
+  if (now >= startDate) return "ongoing";
+  if (enrolled >= maxStudents) return "full";
+  if (enrollDeadline && now >= enrollDeadline) return "pending"; // 报名截止待开课
+
+  return "enrolling";
+}
+
+// 开发模式：跳过登录验证（生产环境自动关闭）
+const DEV_SKIP_AUTH = process.env.NODE_ENV === "development";
 const DEV_USER_ID = "dev_user_001";
 
 interface RouteParams {
@@ -41,11 +59,10 @@ export async function POST(
         id: true,
         name: true,
         maxStudents: true,
-        enrolled: true,
         price: true,
         startDate: true,
+        endDate: true,
         enrollDeadline: true,
-        status: true,
       },
     });
 
@@ -53,32 +70,17 @@ export async function POST(
       return Errors.NOT_FOUND("课程不存在");
     }
 
-    // 检查课程状态
-    if (course.status !== "enrolling" && course.status !== "active") {
-      return Errors.INVALID_PARAMS("课程暂不可报名");
-    }
+    const now = new Date();
 
-    // 检查名额
-    if (course.enrolled >= course.maxStudents) {
-      return Errors.INVALID_PARAMS(courseConfig.texts.fullButton);
+    // 基础时间校验（统一入口）
+    if (now >= course.endDate) {
+      return Errors.INVALID_PARAMS("课程已结束");
     }
-
-    // 检查报名截止时间
-    if (course.enrollDeadline && new Date() > course.enrollDeadline) {
+    if (now >= course.startDate) {
+      return Errors.INVALID_PARAMS("课程进行中，暂不可报名");
+    }
+    if (course.enrollDeadline && now > course.enrollDeadline) {
       return Errors.INVALID_PARAMS("报名已截止");
-    }
-
-    // 检查是否已报名
-    const existingBooking = await prisma.booking.findFirst({
-      where: {
-        userId,
-        courseId: id,
-        status: { in: ["pending", "confirmed"] },
-      },
-    });
-
-    if (existingBooking) {
-      return Errors.INVALID_PARAMS("您已报名此课程");
     }
 
     // 生成订单号
@@ -86,6 +88,32 @@ export async function POST(
 
     // 使用事务处理报名
     const result = await prisma.$transaction(async (tx) => {
+      // 并发下先查当前有效报名数
+      const activeCount = await tx.booking.count({
+        where: {
+          courseId: id,
+          status: { in: ["pending", "confirmed"] },
+        },
+      });
+
+      // 再次容量校验（事务内防超卖）
+      if (activeCount >= course.maxStudents) {
+        throw Errors.INVALID_PARAMS(courseConfig.texts.fullButton);
+      }
+
+      // 检查是否已报名（事务内防并发重复）
+      const existingBooking = await tx.booking.findFirst({
+        where: {
+          userId,
+          courseId: id,
+          status: { in: ["pending", "confirmed"] },
+        },
+      });
+
+      if (existingBooking) {
+        throw Errors.INVALID_PARAMS("您已报名此课程");
+      }
+
       // 1. 创建预约订单
       const booking = await tx.booking.create({
         data: {
@@ -102,12 +130,20 @@ export async function POST(
         },
       });
 
-      // 2. 更新课程报名人数
+      // 2. 更新课程状态（基于实时报名人数）
+      const newEnrolled = activeCount + 1;
+      const newStatus = calcCourseStatus(
+        newEnrolled,
+        course.maxStudents,
+        course.startDate,
+        course.endDate,
+        course.enrollDeadline
+      );
+
       const updatedCourse = await tx.course.update({
         where: { id },
         data: {
-          enrolled: { increment: 1 },
-          status: course.enrolled + 1 >= course.maxStudents ? "full" : "enrolling",
+          status: newStatus,
         },
       });
 

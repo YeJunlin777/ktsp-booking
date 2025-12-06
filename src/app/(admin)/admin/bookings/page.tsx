@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,66 +10,50 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Eye,
+  RefreshCw,
+  List,
 } from "lucide-react";
-
-interface Booking {
-  id: string;
-  orderNo: string;
-  userName: string;
-  venueName: string;
-  date: string;
-  time: string;
-  status: string;
-  price: number;
-}
+import { bookingConfig } from "@/config";
+import { useAdminBookingList, useAdminBookingAction } from "@/hooks/use-admin-booking";
 
 /**
  * 预约管理页面
  * 
- * 开发者 A 负责
+ * 【职责】只负责布局和组合组件
+ * 【Hook】业务逻辑封装在 useAdminBookingList 和 useAdminBookingAction
  */
 export default function AdminBookingsPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  // 使用 Hook 获取数据和操作
+  const {
+    loading,
+    bookings,
+    stats,
+    filters,
+    setKeyword,
+    setStatus,
+    setType,
+    refresh,
+  } = useAdminBookingList();
 
-  useEffect(() => {
-    fetchBookings();
-  }, []);
+  const { confirmArrival, completeBooking, markNoShow, cancelBooking } = useAdminBookingAction(refresh);
 
-  const fetchBookings = async () => {
-    try {
-      // TODO: 调用管理后台 API
-      // 临时 mock 数据
-      setBookings([
-        { id: "1", orderNo: "BK20241205001", userName: "张三", venueName: "打位 A01", date: "2024-12-05", time: "09:00-10:00", status: "pending", price: 100 },
-        { id: "2", orderNo: "BK20241205002", userName: "李四", venueName: "模拟器 S01", date: "2024-12-05", time: "10:00-11:00", status: "confirmed", price: 200 },
-        { id: "3", orderNo: "BK20241205003", userName: "王五", venueName: "打位 A02", date: "2024-12-05", time: "14:00-15:00", status: "completed", price: 100 },
-        { id: "4", orderNo: "BK20241205004", userName: "赵六", venueName: "VIP房 V01", date: "2024-12-05", time: "15:00-17:00", status: "cancelled", price: 1000 },
-        { id: "5", orderNo: "BK20241205005", userName: "钱七", venueName: "打位 A03", date: "2024-12-05", time: "16:00-17:00", status: "no_show", price: 100 },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+  // 本地 UI 状态
+  const [searchInput, setSearchInput] = useState("");
+
+  // 配置
+  const { admin } = bookingConfig;
+  const statusConfig = admin.statusConfig as Record<string, { label: string; color: string }>;
+
+  // 搜索处理
+  const handleSearch = () => {
+    setKeyword(searchInput);
   };
 
-  const statusConfig: Record<string, { label: string; color: string }> = {
-    pending: { label: "待确认", color: "bg-yellow-100 text-yellow-700" },
-    confirmed: { label: "已确认", color: "bg-blue-100 text-blue-700" },
-    completed: { label: "已完成", color: "bg-green-100 text-green-700" },
-    cancelled: { label: "已取消", color: "bg-gray-100 text-gray-700" },
-    no_show: { label: "失约", color: "bg-red-100 text-red-700" },
+  // 获取预约类型标签
+  const getTypeLabel = (type: string) => {
+    const found = admin.bookingTypes.find(t => t.key === type);
+    return found?.label || type;
   };
-
-  const filteredBookings = bookings.filter((booking) => {
-    const matchSearch = 
-      booking.userName.includes(searchKeyword) ||
-      booking.orderNo.includes(searchKeyword);
-    const matchStatus = statusFilter === "all" || booking.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
 
   return (
     <div className="space-y-6">
@@ -82,46 +66,72 @@ export default function AdminBookingsPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="cursor-pointer hover:border-primary" onClick={() => setStatusFilter("pending")}>
+      <div className="grid gap-4 md:grid-cols-5">
+        <Card 
+          className={`cursor-pointer hover:border-primary transition-colors ${filters.status === "all" ? "border-primary bg-primary/5" : ""}`} 
+          onClick={() => setStatus("all")}
+        >
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <List className="h-5 w-5 text-gray-500" />
+              <span className="text-2xl font-bold">
+                {stats.total}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">全部</p>
+          </CardContent>
+        </Card>
+        <Card 
+          className={`cursor-pointer hover:border-primary transition-colors ${filters.status === "pending" ? "border-primary bg-primary/5" : ""}`} 
+          onClick={() => setStatus("pending")}
+        >
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-yellow-500" />
               <span className="text-2xl font-bold">
-                {bookings.filter((b) => b.status === "pending").length}
+                {stats.pending}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">待确认</p>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:border-primary" onClick={() => setStatusFilter("confirmed")}>
+        <Card 
+          className={`cursor-pointer hover:border-primary transition-colors ${filters.status === "confirmed" ? "border-primary bg-primary/5" : ""}`} 
+          onClick={() => setStatus("confirmed")}
+        >
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-blue-500" />
               <span className="text-2xl font-bold">
-                {bookings.filter((b) => b.status === "confirmed").length}
+                {stats.confirmed}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">已确认</p>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:border-primary" onClick={() => setStatusFilter("completed")}>
+        <Card 
+          className={`cursor-pointer hover:border-primary transition-colors ${filters.status === "completed" ? "border-primary bg-primary/5" : ""}`} 
+          onClick={() => setStatus("completed")}
+        >
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
               <span className="text-2xl font-bold">
-                {bookings.filter((b) => b.status === "completed").length}
+                {stats.completed}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">已完成</p>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:border-primary" onClick={() => setStatusFilter("no_show")}>
+        <Card 
+          className={`cursor-pointer hover:border-primary transition-colors ${filters.status === "no_show" ? "border-primary bg-primary/5" : ""}`} 
+          onClick={() => setStatus("no_show")}
+        >
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-500" />
               <span className="text-2xl font-bold">
-                {bookings.filter((b) => b.status === "no_show").length}
+                {stats.no_show}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">失约</p>
@@ -132,21 +142,42 @@ export default function AdminBookingsPage() {
       {/* 搜索和筛选 */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap gap-4">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="搜索订单号或用户名..."
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
+                placeholder="搜索订单号/用户名/手机号..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 className="pl-10"
               />
             </div>
-            <Button 
-              variant={statusFilter === "all" ? "default" : "outline"}
-              onClick={() => setStatusFilter("all")}
+            <select
+              className="rounded-md border px-3 py-2 text-sm"
+              value={filters.type}
+              onChange={(e) => setType(e.target.value)}
+              title="选择预约类型"
+              aria-label="预约类型筛选"
             >
-              全部
+              {admin.bookingTypes.map((t) => (
+                <option key={t.key} value={t.key}>{t.label}</option>
+              ))}
+            </select>
+            <select
+              className="rounded-md border px-3 py-2 text-sm"
+              value={filters.status}
+              onChange={(e) => setStatus(e.target.value)}
+              title="选择预约状态"
+              aria-label="预约状态筛选"
+            >
+              {admin.statusFilter.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
+              ))}
+            </select>
+            <Button variant="outline" onClick={handleSearch}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              刷新
             </Button>
           </div>
         </CardContent>
@@ -167,7 +198,7 @@ export default function AdminBookingsPage() {
                   <tr className="border-b text-left text-sm text-muted-foreground">
                     <th className="pb-3 font-medium">订单号</th>
                     <th className="pb-3 font-medium">用户</th>
-                    <th className="pb-3 font-medium">场地</th>
+                    <th className="pb-3 font-medium">预约项目</th>
                     <th className="pb-3 font-medium">日期</th>
                     <th className="pb-3 font-medium">时间</th>
                     <th className="pb-3 font-medium">金额</th>
@@ -176,14 +207,20 @@ export default function AdminBookingsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {filteredBookings.map((booking) => (
+                  {bookings.map((booking) => (
                     <tr key={booking.id} className="text-sm">
                       <td className="py-4 font-mono text-xs">{booking.orderNo}</td>
-                      <td className="py-4">{booking.userName}</td>
-                      <td className="py-4">{booking.venueName}</td>
+                      <td className="py-4">
+                        <div>{booking.userName}</div>
+                        <div className="text-xs text-muted-foreground">{booking.userPhone}</div>
+                      </td>
+                      <td className="py-4">
+                        <div>{booking.targetName}</div>
+                        <div className="text-xs text-muted-foreground">{getTypeLabel(booking.type)}</div>
+                      </td>
                       <td className="py-4">{booking.date}</td>
-                      <td className="py-4">{booking.time}</td>
-                      <td className="py-4">¥{booking.price}</td>
+                      <td className="py-4">{booking.startTime}-{booking.endTime}</td>
+                      <td className="py-4">¥{booking.finalPrice}</td>
                       <td className="py-4">
                         <span
                           className={`inline-flex rounded-full px-2 py-1 text-xs ${
@@ -194,18 +231,53 @@ export default function AdminBookingsPage() {
                         </span>
                       </td>
                       <td className="py-4">
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center gap-1">
+                          {/* 待确认 -> 确认到店 */}
                           {booking.status === "pending" && (
-                            <Button variant="ghost" size="sm">
-                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                              onClick={() => confirmArrival(booking.id)}
+                              title={admin.texts.confirmAction}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              到店
                             </Button>
                           )}
-                          {booking.status === "confirmed" && (
-                            <Button variant="ghost" size="sm">
+                          {/* 待确认 -> 失约（用户没来） */}
+                          {booking.status === "pending" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => markNoShow(booking.id)}
+                              title={admin.texts.noShowAction}
+                            >
                               <XCircle className="h-4 w-4 text-red-500" />
+                            </Button>
+                          )}
+                          {/* 待确认 -> 取消 */}
+                          {booking.status === "pending" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => cancelBooking(booking.id)}
+                              title={admin.texts.cancelAction}
+                            >
+                              <Clock className="h-4 w-4 text-gray-500" />
+                            </Button>
+                          )}
+                          {/* 已确认 -> 完成（付款后点击） */}
+                          {booking.status === "confirmed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-green-600 border-green-200 hover:bg-green-50"
+                              onClick={() => completeBooking(booking.id)}
+                              title={admin.texts.completeAction}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              已付款
                             </Button>
                           )}
                         </div>

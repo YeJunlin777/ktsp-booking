@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { homeConfig } from "@/config";
+import { success, Errors } from "@/lib/response";
 
 /**
  * 获取推荐场地
@@ -38,15 +38,9 @@ export async function GET() {
       price: Number(venue.price),
     }));
 
-    return NextResponse.json({
-      success: true,
-      data: formattedVenues,
-    });
-  } catch (error) {
-    console.error("获取推荐场地失败:", error);
-    return NextResponse.json(
-      { success: false, error: { code: "INTERNAL_ERROR", message: "获取推荐场地失败" } },
-      { status: 500 }
-    );
+    return success(formattedVenues);
+  } catch (err) {
+    console.error("获取推荐场地失败:", err);
+    return Errors.INTERNAL_ERROR();
   }
 }

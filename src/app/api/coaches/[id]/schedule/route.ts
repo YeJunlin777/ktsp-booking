@@ -26,13 +26,14 @@ export async function GET(
       return Errors.INVALID_PARAMS("请选择日期");
     }
 
-    // 获取教练信息
+    // 获取教练信息（包含预约规则）
     const coach = await prisma.coach.findUnique({
       where: { id },
       select: {
         id: true,
         price: true,
         status: true,
+        minAdvanceHours: true,
       },
     });
 
@@ -43,6 +44,9 @@ export async function GET(
     if (coach.status !== "active") {
       return success([]);
     }
+
+    // 获取最少提前预约小时数（优先使用教练设置，否则使用全局配置）
+    const minAdvanceHours = coach.minAdvanceHours ?? coachConfig.rules.minAdvanceHours;
 
     // 查询教练当天的所有排班
     const queryDate = new Date(date);
@@ -66,16 +70,35 @@ export async function GET(
     }
 
     const price = Number(coach.price);
+    const now = new Date();
 
     // 构建返回数据：每个排班时段作为一个可选项
-    const slots = schedules.map((schedule: typeof schedules[number]) => ({
-      id: schedule.id,
-      time: schedule.startTime,
-      endTime: schedule.endTime,
-      available: !schedule.isBooked,
-      duration: coachConfig.lessonDuration.default,
-      price,
-    }));
+    const slots = schedules.map((schedule: typeof schedules[number]) => {
+      // 计算时段开始时间
+      const slotDateTime = new Date(`${date}T${schedule.startTime}:00`);
+      const hoursUntilSlot = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+      
+      // 判断是否可预约：未被预约 且 满足提前预约时间要求
+      const isAvailable = !schedule.isBooked && hoursUntilSlot >= minAdvanceHours;
+      
+      // 不可用原因（用于前端提示）
+      let unavailableReason: string | undefined;
+      if (schedule.isBooked) {
+        unavailableReason = "已被预约";
+      } else if (hoursUntilSlot < minAdvanceHours) {
+        unavailableReason = `需提前${minAdvanceHours}小时预约`;
+      }
+
+      return {
+        id: schedule.id,
+        time: schedule.startTime,
+        endTime: schedule.endTime,
+        available: isAvailable,
+        unavailableReason,
+        duration: coachConfig.lessonDuration.default,
+        price,
+      };
+    });
 
     return success(slots);
   } catch (error) {

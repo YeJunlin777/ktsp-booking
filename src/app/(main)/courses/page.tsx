@@ -1,6 +1,7 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { Pagination } from "@/components/ui/pagination";
 import { useCourseList, useCourseConfig } from "@/hooks/use-course";
 import { CourseCard, CourseFilter } from "@/components/course";
 
@@ -13,7 +14,7 @@ import { CourseCard, CourseFilter } from "@/components/course";
  */
 export default function CoursesPage() {
   const config = useCourseConfig();
-  const { loading, error, courses, selectedCategory, onCategoryChange } = useCourseList();
+  const { loading, error, courses, selectedCategory, page, pagination, onCategoryChange, onPageChange } = useCourseList();
 
   return (
     <div className="min-h-screen pb-20">
@@ -35,7 +36,18 @@ export default function CoursesPage() {
         {loading ? (
           <>
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-64 rounded-lg" />
+              <div key={i} className="rounded-lg border overflow-hidden">
+                <Skeleton className="aspect-video w-full" />
+                <div className="p-3 space-y-2">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <div className="flex justify-between pt-2">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-6 w-12" />
+                  </div>
+                </div>
+              </div>
             ))}
           </>
         ) : error ? (
@@ -55,6 +67,7 @@ export default function CoursesPage() {
               level={course.level}
               coachName={course.coachName}
               startTime={course.startTime}
+              enrollDeadline={course.enrollDeadline}
               duration={course.duration}
               capacity={course.capacity}
               enrolled={course.enrolled}
@@ -62,6 +75,16 @@ export default function CoursesPage() {
               status={course.status}
             />
           ))
+        )}
+
+        {/* 分页 */}
+        {!loading && pagination && pagination.totalPages > 1 && (
+          <Pagination
+            page={page}
+            totalPages={pagination.totalPages}
+            onPageChange={onPageChange}
+            className="py-4"
+          />
         )}
       </div>
     </div>

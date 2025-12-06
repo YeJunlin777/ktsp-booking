@@ -2,10 +2,10 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { success, Errors } from "@/lib/response";
 import { getCurrentUserId } from "@/lib/session";
-import { bookingConfig } from "@/config";
+import { bookingConfig, coachConfig } from "@/config";
 
-// 🔧 开发模式：跳过登录验证（上线前改为 false）
-const DEV_SKIP_AUTH = true;
+// 开发模式：跳过登录验证（生产环境自动关闭）
+const DEV_SKIP_AUTH = process.env.NODE_ENV === "development";
 const DEV_USER_ID = "dev_user_001";
 
 interface RouteParams {
@@ -36,9 +36,21 @@ export async function POST(
     const body = await request.json();
     const { reason } = body;
 
-    // 查询预约
+    // 查询预约（包含排班ID和乐观锁版本）
     const booking = await prisma.booking.findUnique({
       where: { id },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        bookingType: true,
+        bookingDate: true,
+        startTime: true,
+        finalPrice: true,
+        coachId: true,     // 教练ID
+        scheduleId: true,  // 教练排班ID
+        version: true,     // 乐观锁版本
+      },
     });
 
     if (!booking) {
@@ -66,20 +78,56 @@ export async function POST(
     let refundAmount = Number(booking.finalPrice);
     let cancelFee = 0;
 
-    // 如果在免费取消时间内
-    if (hoursUntilBooking < bookingConfig.rules.freeCancelHours) {
-      // 计算违约金
-      cancelFee = Math.round(refundAmount * 0.3); // 30% 违约金
+    // 获取免费取消时间（教练预约优先使用教练设置）
+    let freeCancelHours = bookingConfig.rules.freeCancelHours;
+    
+    if (booking.bookingType === "coach" && booking.coachId) {
+      const coach = await prisma.coach.findUnique({
+        where: { id: booking.coachId },
+        select: { freeCancelHours: true },
+      });
+      if (coach?.freeCancelHours != null) {
+        freeCancelHours = coach.freeCancelHours;
+      } else {
+        // 使用教练模块的默认配置
+        freeCancelHours = coachConfig.rules.freeCancelHours;
+      }
+    }
+
+    // 如果在免费取消时间内（当前违约金比例为0，暂不收取）
+    if (hoursUntilBooking < freeCancelHours && coachConfig.rules.cancelFeeRatio > 0) {
+      cancelFee = Math.round(refundAmount * coachConfig.rules.cancelFeeRatio);
       refundAmount = refundAmount - cancelFee;
     }
 
-    // 更新预约状态
-    await prisma.booking.update({
-      where: { id },
-      data: {
-        status: "cancelled",
-        cancelReason: reason || "用户取消",
-      },
+    // 使用事务 + 乐观锁：更新预约状态 + 释放排班
+    await prisma.$transaction(async (tx) => {
+      // 1. 乐观锁更新预约状态（version 必须匹配）
+      const updateResult = await tx.booking.updateMany({
+        where: { 
+          id, 
+          version: booking.version,  // 乐观锁检查
+          status: { in: ["pending", "confirmed"] },  // 双重检查状态
+        },
+        data: {
+          status: "cancelled",
+          cancelReason: reason || "用户取消",
+          version: { increment: 1 },  // 递增版本
+        },
+      });
+
+      // 如果更新失败，说明被其他操作抢先修改
+      if (updateResult.count === 0) {
+        throw new Error("CONCURRENT_MODIFICATION");
+      }
+
+      // 2. 教练预约：释放排班时段
+      if (booking.bookingType === "coach" && booking.scheduleId) {
+        await tx.coachSchedule.update({
+          where: { id: booking.scheduleId },
+          data: { isBooked: false },
+        });
+      }
     });
 
     return success({
@@ -88,6 +136,10 @@ export async function POST(
       cancelFee,
     });
   } catch (error) {
+    // 处理乐观锁冲突
+    if (error instanceof Error && error.message === "CONCURRENT_MODIFICATION") {
+      return Errors.INVALID_PARAMS("操作冲突，预约状态已变更，请刷新重试");
+    }
     console.error("取消预约失败:", error);
     return Errors.INTERNAL_ERROR();
   }

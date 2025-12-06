@@ -15,9 +15,11 @@ import {
   Plus,
   Trash2,
   Clock,
+  Copy,
 } from "lucide-react";
-import { get, put, del } from "@/lib/api";
+import { get, post, put, del } from "@/lib/api";
 import { toast } from "sonner";
+import { coachConfig } from "@/config";
 
 interface Coach {
   id: string;
@@ -38,11 +40,28 @@ interface CoachScheduleDialogProps {
   coach: Coach | null;
 }
 
-// 生成时间选项（8:00 - 22:00，每小时一个）
-const timeOptions = Array.from({ length: 15 }, (_, i) => {
-  const hour = 8 + i;
-  return `${hour.toString().padStart(2, "0")}:00`;
-});
+// 生成时间选项（从配置读取）
+const generateTimeOptions = () => {
+  const { startHour, endHour, interval } = coachConfig.schedule;
+  const options: string[] = [];
+  
+  for (let hour = startHour; hour <= endHour; hour++) {
+    if (interval === 60) {
+      // 整点
+      options.push(`${hour.toString().padStart(2, "0")}:00`);
+    } else if (interval === 30) {
+      // 半点
+      options.push(`${hour.toString().padStart(2, "0")}:00`);
+      if (hour < endHour) {
+        options.push(`${hour.toString().padStart(2, "0")}:30`);
+      }
+    }
+  }
+  
+  return options;
+};
+
+const timeOptions = generateTimeOptions();
 
 /**
  * 教练排班管理弹窗
@@ -94,7 +113,7 @@ export function CoachScheduleDialog({
       setSchedules(result?.schedules || {});
     } catch (error) {
       console.error("获取排班失败:", error);
-      toast.error("获取排班数据失败");
+      toast.error(coachConfig.admin.texts.fetchScheduleFailed);
     } finally {
       setLoading(false);
     }
@@ -188,11 +207,34 @@ export function CoachScheduleDialog({
     }
   };
 
+  // 复制上周排班
+  const handleCopyLastWeek = async () => {
+    if (!coach) return;
+
+    const confirmed = confirm("确定要复制上周排班到本周？已有的排班会被保留。");
+    if (!confirmed) return;
+
+    try {
+      setSaving(true);
+      const result = await post<{ copiedCount: number; message: string }>(
+        `/api/admin/coaches/${coach.id}/schedule/copy`,
+        { copyLastWeek: true }
+      );
+      toast.success(result?.message || "复制成功");
+      fetchSchedules(selectedDate);
+    } catch (error) {
+      console.error("复制排班失败:", error);
+      toast.error("复制失败，请确认上周有排班数据");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // 快速设置一周排班
   const handleQuickSetup = async () => {
     if (!coach) return;
 
-    const confirmed = confirm("确定要为本周设置默认排班（周一至周六 9:00-18:00）？已有排班不会被覆盖。");
+    const confirmed = confirm("确定要为本周设置默认排班（周日至周六 9:00-18:00）？已有排班不会被覆盖。");
     if (!confirmed) return;
 
     try {
@@ -200,8 +242,8 @@ export function CoachScheduleDialog({
       
       const scheduleData: { date: string; startTime: string; endTime: string }[] = [];
       
-      // 周一到周六
-      for (let i = 1; i <= 6; i++) {
+      // 周日到周六（全周）
+      for (let i = 0; i <= 6; i++) {
         const date = weekDates[i];
         const dateStr = getDateKey(date);
         
@@ -241,7 +283,7 @@ export function CoachScheduleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {coach?.name} - 排班管理
@@ -267,6 +309,10 @@ export function CoachScheduleDialog({
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={handleQuickSetup} disabled={saving}>
             快速设置本周排班
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleCopyLastWeek} disabled={saving}>
+            <Copy className="h-4 w-4 mr-1" />
+            复制上周排班
           </Button>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>新增时段：</span>
@@ -329,15 +375,15 @@ export function CoachScheduleDialog({
                     {daySchedules.map((schedule) => (
                       <div
                         key={schedule.id}
-                        className={`flex items-center justify-between rounded px-2 py-1 text-xs ${
+                        className={`group flex items-center justify-between rounded px-1.5 py-1 text-xs ${
                           schedule.isBooked
                             ? "bg-yellow-100 text-yellow-700"
                             : "bg-green-100 text-green-700"
                         }`}
                       >
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {schedule.startTime}-{schedule.endTime}
+                        <span className="flex items-center gap-0.5">
+                          <Clock className="h-3 w-3 shrink-0" />
+                          <span className="whitespace-nowrap">{schedule.startTime}-{schedule.endTime}</span>
                         </span>
                         {!schedule.isBooked && !isPast && (
                           <button

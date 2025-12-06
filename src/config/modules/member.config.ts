@@ -19,6 +19,11 @@ export const memberConfig = {
     
     verifyTitle: "实名认证",
     verifyTip: "完成实名认证后可享受更多权益",
+    
+    // 通用提示
+    loadFailed: "加载失败",
+    saveFailed: "保存失败",
+    saveSuccess: "保存成功",
   },
   
   // ==================== 会员等级配置 ====================
@@ -95,6 +100,33 @@ export const memberConfig = {
     inviteeReward: { points: 50, coupon: null },
     // 分享文案
     shareText: "我在{appName}预约高尔夫，体验超棒！邀请你一起来~",
+  },
+  
+  // ==================== 管理后台配置 ====================
+  admin: {
+    texts: {
+      pageTitle: "会员管理",
+      searchPlaceholder: "搜索姓名或手机号...",
+      totalMembers: "总会员数",
+      premiumMembers: "高级会员",
+      pendingVerify: "待审核",
+      frozenMembers: "已冻结",
+      verifyButton: "实名审核",
+      adjustPoints: "调整积分",
+      freezeSuccess: "账号已冻结",
+      unfreezeSuccess: "账号已解冻",
+    },
+    // 状态配置
+    status: {
+      active: { label: "正常", color: "bg-green-100 text-green-700" },
+      frozen: { label: "已冻结", color: "bg-red-100 text-red-700" },
+    },
+    // 实名状态
+    verifyStatus: {
+      verified: { label: "已认证", color: "text-green-600" },
+      pending: { label: "待审核", color: "text-yellow-600" },
+      none: { label: "未认证", color: "text-gray-400" },
+    },
   },
 };
 

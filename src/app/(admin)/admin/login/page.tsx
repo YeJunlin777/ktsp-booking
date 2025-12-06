@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { commonConfig } from "@/config";
+
+const texts = commonConfig.login.admin;
 
 /**
  * 管理后台登录页面
@@ -24,7 +27,7 @@ export default function AdminLoginPage() {
     e.preventDefault();
     
     if (!formData.username || !formData.password) {
-      toast.error("请输入账号和密码");
+      toast.error(texts.enterCredentials);
       return;
     }
 
@@ -39,14 +42,14 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        toast.success("登录成功");
+        toast.success(texts.loginSuccess);
         router.push("/admin");
         router.refresh();
       } else {
-        toast.error(data.error?.message || "登录失败");
+        toast.error(data.error?.message || texts.loginFailed);
       }
     } catch {
-      toast.error("登录失败，请重试");
+      toast.error(texts.loginFailed);
     } finally {
       setLoading(false);
     }

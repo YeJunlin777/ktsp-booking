@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unlink } from "fs/promises";
 import path from "path";
+import { Errors } from "@/lib/response";
 
 /**
  * 删除上传的文件
@@ -43,9 +44,6 @@ export async function DELETE(
     }
 
     console.error("删除文件失败:", error);
-    return NextResponse.json(
-      { success: false, error: { code: "DELETE_ERROR", message: "删除失败" } },
-      { status: 500 }
-    );
+    return Errors.INTERNAL_ERROR();
   }
 }

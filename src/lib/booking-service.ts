@@ -6,7 +6,7 @@
  */
 
 import { prisma } from "@/lib/db";
-import { bookingConfig } from "@/config";
+import { bookingConfig, coachConfig } from "@/config";
 import {
   calculateEndTime,
   isTimeRangeOverlap,
@@ -27,6 +27,7 @@ export interface CreateBookingParams {
   venueId?: string;
   coachId?: string;
   courseId?: string;
+  scheduleId?: string; // 教练排班ID
   date: string;
   startTime: string;
   duration: number;
@@ -73,7 +74,7 @@ export class BookingService {
    * 使用事务 + 串行隔离级别确保并发安全
    */
   static async createBooking(params: CreateBookingParams): Promise<BookingResult> {
-    const { userId, type, venueId, coachId, date, startTime, duration, totalPrice, requestId } = params;
+    const { userId, type, venueId, coachId, scheduleId, date, startTime, duration, totalPrice } = params;
     const { concurrency, timeBoundary, errors } = bookingConfig;
     const endTime = calculateEndTime(startTime, duration);
     
@@ -153,11 +154,45 @@ export class BookingService {
         if (type === "coach" && coachId) {
           const coach = await tx.coach.findUnique({
             where: { id: coachId },
-            select: { id: true, status: true },
+            select: { id: true, status: true, minAdvanceHours: true },
           });
           
           if (!coach || coach.status !== "active") {
             throw { code: BookingErrorCode.RESOURCE_NOT_FOUND, message: "教练不存在或暂不可用" };
+          }
+          
+          // 校验最少提前预约时间（优先使用教练设置，否则使用全局配置）
+          const minAdvanceHours = coach.minAdvanceHours ?? coachConfig.rules.minAdvanceHours;
+          if (minAdvanceHours > 0) {
+            const bookingDateTime = new Date(`${date}T${startTime}:00`);
+            const now = new Date();
+            const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+            
+            if (hoursUntilBooking < minAdvanceHours) {
+              throw { 
+                code: BookingErrorCode.SLOT_TOO_SOON, 
+                message: `该教练需要提前${minAdvanceHours}小时预约` 
+              };
+            }
+          }
+          
+          // 教练预约必须有排班ID
+          if (!scheduleId) {
+            throw { code: BookingErrorCode.RESOURCE_NOT_FOUND, message: "请选择预约时段" };
+          }
+          
+          // 检查排班是否存在且可用
+          const schedule = await tx.coachSchedule.findUnique({
+            where: { id: scheduleId },
+            select: { id: true, coachId: true, isBooked: true, startTime: true, endTime: true },
+          });
+          
+          if (!schedule || schedule.coachId !== coachId) {
+            throw { code: BookingErrorCode.RESOURCE_NOT_FOUND, message: "排班不存在" };
+          }
+          
+          if (schedule.isBooked) {
+            throw { code: BookingErrorCode.SLOT_CONFLICT, message: "该时段已被预约" };
           }
         }
         
@@ -264,6 +299,7 @@ export class BookingService {
             venueId: venueId || null,
             coachId: coachId || null,
             courseId: params.courseId || null,
+            scheduleId: scheduleId || null,  // 教练排班ID
             bookingDate: new Date(date),
             startTime,
             endTime,
@@ -273,6 +309,27 @@ export class BookingService {
             status: "pending",
           },
         });
+        
+        // 13. 教练预约：原子更新排班状态（并发安全）
+        if (type === "coach" && scheduleId) {
+          // 使用 updateMany + where 条件实现原子更新
+          // 只有当 isBooked = false 时才更新，否则 count = 0
+          const updateResult = await tx.coachSchedule.updateMany({
+            where: { 
+              id: scheduleId,
+              isBooked: false,  // 关键：只有未预约才能更新
+            },
+            data: { isBooked: true },
+          });
+          
+          // 如果没有更新任何记录，说明已被其他人抢先预约
+          if (updateResult.count === 0) {
+            throw { 
+              code: BookingErrorCode.SLOT_CONFLICT, 
+              message: "该时段已被预约，请选择其他时段" 
+            };
+          }
+        }
         
         return { id: booking.id, orderNo: booking.orderNo };
         

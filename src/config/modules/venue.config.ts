@@ -135,6 +135,40 @@ export const venueConfig = {
     "迟到15分钟视为自动放弃",
     "请穿着合适的运动服装",
   ],
+  
+  // ==================== 管理后台配置 ====================
+  admin: {
+    texts: {
+      pageTitle: "场地管理",
+      addButton: "新增场地",
+      searchPlaceholder: "搜索场地名称...",
+      searchButton: "搜索",
+      refreshButton: "刷新",
+      listTitle: "场地列表",
+      emptyText: "暂无场地数据",
+      loadingText: "加载中...",
+      // 表头
+      tableHeaders: {
+        name: "场地名称",
+        type: "类型",
+        capacity: "容量",
+        price: "价格",
+        status: "状态",
+        actions: "操作",
+      },
+      // 状态
+      status: {
+        available: { label: "可用", color: "bg-green-100 text-green-700" },
+        maintenance: { label: "维护中", color: "bg-yellow-100 text-yellow-700" },
+        closed: { label: "已关闭", color: "bg-red-100 text-red-700" },
+      },
+      // 操作提示
+      createSuccess: "场地创建成功",
+      updateSuccess: "场地信息已更新",
+      deleteSuccess: "场地已删除",
+      deleteFailed: "删除失败",
+    },
+  },
 };
 
 export type VenueConfig = typeof venueConfig;

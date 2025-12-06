@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { success, Errors } from "@/lib/response";
 
 /**
  * 获取首页轮播图
@@ -19,15 +19,9 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: banners,
-    });
-  } catch (error) {
-    console.error("获取Banner失败:", error);
-    return NextResponse.json(
-      { success: false, error: { code: "INTERNAL_ERROR", message: "获取Banner失败" } },
-      { status: 500 }
-    );
+    return success(banners);
+  } catch (err) {
+    console.error("获取Banner失败:", err);
+    return Errors.INTERNAL_ERROR();
   }
 }

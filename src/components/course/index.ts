@@ -5,3 +5,4 @@
 export { CourseCard } from "./CourseCard";
 export { CourseFilter } from "./CourseFilter";
 export { CourseHeader } from "./CourseHeader";
+export { EnrollCountdown } from "./EnrollCountdown";

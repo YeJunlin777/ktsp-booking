@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { get } from "@/lib/api";
-import { venueConfig } from "@/config";
+import { venueConfig, commonConfig } from "@/config";
 
 // ==================== 类型定义 ====================
 
@@ -146,7 +146,7 @@ export function useTimeSlots(venueId: string) {
       setSelectedSlots([]); // 切换日期时清空选择
     } catch (err) {
       console.error("获取时段失败:", err);
-      setError("加载时段失败");
+      setError(commonConfig.errors.loadFailed);
     } finally {
       setLoading(false);
     }

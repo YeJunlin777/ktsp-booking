@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { pointsConfig } from "@/config";
+import { pointsConfig, commonConfig } from "@/config";
 
 /**
  * 签到状态类型
@@ -57,10 +57,10 @@ export function useCheckin() {
       if (data.success) {
         setStatus(data.data);
       } else {
-        setError(data.error?.message || "获取签到状态失败");
+        setError(data.error?.message || commonConfig.errors.loadFailed);
       }
     } catch (err) {
-      setError("网络错误，请重试");
+      setError(commonConfig.errors.networkError);
       console.error("获取签到状态失败:", err);
     } finally {
       setLoading(false);
