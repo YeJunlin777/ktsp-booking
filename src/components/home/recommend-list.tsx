@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { homeConfig } from "@/config";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ImageIcon } from "lucide-react";
 
 interface RecommendVenue {
   id: string;
@@ -83,17 +84,37 @@ export function RecommendList({
               {/* 图片 */}
               <div className="relative aspect-[4/3] bg-muted">
                 {venue.image ? (
-                  <Image
-                    src={venue.image}
-                    alt={venue.name}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    暂无图片
-                  </div>
-                )}
+                  // 外部URL使用原生img，避免域名白名单限制
+                  venue.image.startsWith("http") ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={venue.image}
+                      alt={venue.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        // 图片加载失败时隐藏
+                        e.currentTarget.style.display = "none";
+                        e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                      }}
+                    />
+                  ) : (
+                    <Image
+                      src={venue.image}
+                      alt={venue.name}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 25vw"
+                      className="object-cover"
+                    />
+                  )
+                ) : null}
+                {/* 图片加载失败或无图片时显示占位 */}
+                <div className={cn(
+                  "w-full h-full flex flex-col items-center justify-center text-muted-foreground absolute inset-0",
+                  venue.image && "hidden"
+                )}>
+                  <ImageIcon className="w-8 h-8 mb-1" />
+                  <span className="text-xs">暂无图片</span>
+                </div>
                 {/* 状态标签 */}
                 <Badge 
                   variant={statusConfig[venue.status]?.variant || "default"}

@@ -12,6 +12,7 @@ import {
   DurationPicker, 
   TimeRangePicker,
   BookingConfirm,
+  ImageGallery,
 } from "@/components/venue";
 import { venueConfig } from "@/config/modules/venue.config";
 
@@ -183,20 +184,27 @@ export default function VenueDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* 场地信息（简化版） */}
+      {/* 场地图片画廊 */}
+      {venue.images && venue.images.length > 0 && (
+        <ImageGallery
+          images={venue.images}
+          alt={venue.name}
+          aspectRatio="16/9"
+        />
+      )}
+
+      {/* 场地信息 */}
       <div className="px-4 py-4 bg-muted/30">
-        <div className="flex gap-3">
-          {venue.images?.[0] && (
-            <img 
-              src={venue.images[0]} 
-              alt={venue.name}
-              className="w-20 h-20 rounded-lg object-cover"
-            />
-          )}
+        <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h2 className="font-semibold">{venue.name}</h2>
-            <p className="text-sm text-muted-foreground mt-1">{venue.description}</p>
-            <p className="text-primary font-semibold mt-1">¥{venue.price}/小时</p>
+            <h2 className="font-semibold text-lg">{venue.name}</h2>
+            {venue.description && (
+              <p className="text-sm text-muted-foreground mt-1">{venue.description}</p>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-xl text-primary font-bold">¥{venue.price}</p>
+            <p className="text-xs text-muted-foreground">/小时</p>
           </div>
         </div>
       </div>

@@ -113,9 +113,9 @@ model Venue {
   
   // 设施和营业时间
   facilities  Json?                        // 设施 JSON数组
-  openTime    String   @default("08:00")   // 营业开始时间
+  openTime    String   @default("06:00")   // 营业开始时间
   closeTime   String   @default("22:00")   // 营业结束时间
-  minDuration Int      @default(30)        // 最小预约时长（分钟）
+  minDuration Int      @default(15)        // 最小预约时长（分钟）- 支持15/30/60分钟
   maxDuration Int      @default(240)       // 最大预约时长（分钟）
   
   status      String   @default("active")  // active/maintenance/disabled

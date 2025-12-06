@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { venueConfig } from "@/config";
+import { ImageIcon } from "lucide-react";
 
 interface VenueCardProps {
   id: string;
@@ -53,17 +54,36 @@ export function VenueCard({
         {/* 图片区域 */}
         <div className="relative aspect-[4/3] bg-muted">
           {image ? (
-            <Image
-              src={image}
-              alt={name}
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              暂无图片
-            </div>
-          )}
+            // 外部URL使用原生img，避免域名白名单限制
+            image.startsWith("http") ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image}
+                alt={name}
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                }}
+              />
+            ) : (
+              <Image
+                src={image}
+                alt={name}
+                fill
+                sizes="(max-width: 768px) 50vw, 25vw"
+                className="object-cover"
+              />
+            )
+          ) : null}
+          {/* 图片加载失败或无图片时显示占位 */}
+          <div className={cn(
+            "w-full h-full flex flex-col items-center justify-center text-muted-foreground absolute inset-0",
+            image && "hidden"
+          )}>
+            <ImageIcon className="w-8 h-8 mb-1" />
+            <span className="text-xs">暂无图片</span>
+          </div>
           {/* 状态标签 */}
           <Badge 
             variant={statusConfig[status]?.variant || "default"}

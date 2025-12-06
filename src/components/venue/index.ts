@@ -7,6 +7,7 @@ export { VenueTypeFilter } from "./VenueTypeFilter";
 export { TimeSlotPicker } from "./TimeSlotPicker";
 export { DatePicker } from "./DatePicker";
 export { VenueHeader } from "./VenueHeader";
+export { ImageGallery } from "./ImageGallery";
 
 // 新预约流程组件
 export { BookingDatePicker } from "./BookingDatePicker";

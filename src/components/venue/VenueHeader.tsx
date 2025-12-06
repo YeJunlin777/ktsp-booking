@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { venueConfig } from "@/config";
 import { Clock, Users } from "lucide-react";
+import { ImageGallery } from "./ImageGallery";
 
 interface VenueHeaderProps {
   name: string;
@@ -44,22 +44,12 @@ export function VenueHeader({
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* 图片展示 */}
-      <div className="relative aspect-[16/9] bg-muted rounded-xl overflow-hidden">
-        {images.length > 0 ? (
-          <Image
-            src={images[0]}
-            alt={name}
-            fill
-            className="object-cover"
-            priority
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            暂无图片
-          </div>
-        )}
-      </div>
+      {/* 图片画廊 */}
+      <ImageGallery 
+        images={images} 
+        alt={name}
+        aspectRatio="16/9"
+      />
 
       {/* 基本信息 */}
       <div className="space-y-2">
